@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Ingreso</title>
+<style>
+  :root{
+    --verde-hondo:#1d3b2a;
+    --verde:#2e5e3a;
+    --verde-claro:#4a7c59;
+    --crema:#f5f3ec;
+    --tierra:#c9a227;
+    --tinta:#22271f;
+    --gris:#6b7169;
+    --linea:#dcdcd2;
+    --error:#a4443a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--verde-hondo);
+    color:var(--tinta);
+    min-height:100vh;
+    display:flex;align-items:center;justify-content:center;
+    padding:24px;
+    line-height:1.5;
+  }
+  /* fondo con textura sutil de bandas, evoca los surcos de la plantación */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;
+    background:
+      linear-gradient(180deg, var(--verde-hondo), #16301f),
+      repeating-linear-gradient(90deg, transparent 0 38px, rgba(255,255,255,.015) 38px 39px);
+    pointer-events:none;
+  }
+  .tarjeta{
+    position:relative;z-index:1;
+    width:100%;max-width:420px;
+    background:var(--crema);
+    border-radius:14px;
+    box-shadow:0 24px 60px rgba(0,0,0,.35);
+    overflow:hidden;
+  }
+  .encabezado{
+    padding:38px 40px 22px;
+    border-bottom:1px solid var(--linea);
+  }
+  .marca{
+    display:flex;align-items:baseline;gap:10px;
+    margin-bottom:20px;
+  }
+  .marca .hoja{
+    width:26px;height:26px;flex:none;
+    color:var(--verde);
+  }
+  .marca-texto{
+    font-size:15px;font-weight:600;color:var(--verde);
+    letter-spacing:.02em;
+  }
+  h1{
+    font-size:26px;font-weight:650;color:var(--verde-hondo);
+    letter-spacing:-.01em;
+  }
+  .sub{
+    margin-top:8px;color:var(--gris);font-size:14.5px;
+  }
+  form{padding:28px 40px 36px}
+  .campo{margin-bottom:18px}
+  label{
+    display:block;font-size:13px;font-weight:600;
+    color:var(--tinta);margin-bottom:7px;
+  }
+  input{
+    width:100%;padding:12px 14px;
+    border:1.5px solid var(--linea);
+    border-radius:9px;font-size:15px;
+    background:#fff;color:var(--tinta);
+    transition:border-color .15s;
+  }
+  input:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .boton{
+    width:100%;padding:13px;margin-top:6px;
+    background:var(--verde);color:#fff;
+    border:none;border-radius:9px;
+    font-size:15px;font-weight:600;cursor:pointer;
+    transition:background .15s;
+  }
+  .boton:hover{background:var(--verde-hondo)}
+  .boton:disabled{opacity:.6;cursor:default}
+  .aviso{
+    padding:11px 14px;border-radius:9px;
+    font-size:13.5px;margin-bottom:18px;display:none;
+  }
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+  .aviso.info{background:#eef2ea;color:var(--verde);border:1px solid #d5e0d2;display:block}
+  .pie{
+    text-align:center;padding:18px;font-size:12.5px;color:var(--gris);
+    border-top:1px solid var(--linea);position:relative;z-index:1;
+  }
+  .cargando{display:none;text-align:center;color:var(--gris);padding:40px}
+</style>
+</head>
+<body>
+  <div class="tarjeta">
+    <div id="cargando" class="cargando">Cargando…</div>
+
+    <div id="vista" style="display:none">
+      <div class="encabezado">
+        <div class="marca">
+          <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/>
+            <path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/>
+            <path d="M12 21V9"/>
+          </svg>
+          <span class="marca-texto">Finca La Siria</span>
+        </div>
+        <h1 id="titulo">Ingresar</h1>
+        <p class="sub" id="subtitulo">Plataforma de control operativo</p>
+      </div>
+      <form id="form">
+        <div id="aviso" class="aviso"></div>
+        <div class="campo" id="campo-nombre" style="display:none">
+          <label for="nombre">Nombre completo</label>
+          <input type="text" id="nombre" autocomplete="name">
+        </div>
+        <div class="campo">
+          <label for="email">Correo</label>
+          <input type="email" id="email" autocomplete="email" required>
+        </div>
+        <div class="campo">
+          <label for="password" id="lbl-pass">Contraseña</label>
+          <input type="password" id="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="boton" id="btn">Ingresar</button>
+      </form>
+    </div>
+    <div class="pie">Inversiones Siria Ltda.</div>
+  </div>
+
+<script>
+let modo = "login"; // o "setup"
+
+async function init(){
+  try{
+    const r = await fetch("/api/setup-status");
+    const d = await r.json();
+    modo = d.needsSetup ? "setup" : "login";
+  }catch(e){ modo = "login"; }
+
+  document.getElementById("cargando").style.display = "none";
+  document.getElementById("vista").style.display = "block";
+
+  if(modo === "setup"){
+    document.getElementById("titulo").textContent = "Crear administrador";
+    document.getElementById("subtitulo").textContent = "Primera vez: configura tu cuenta de administrador.";
+    document.getElementById("campo-nombre").style.display = "block";
+    document.getElementById("lbl-pass").textContent = "Contraseña (mínimo 8 caracteres)";
+    document.getElementById("password").setAttribute("autocomplete","new-password");
+    document.getElementById("btn").textContent = "Crear cuenta";
+  }
+}
+
+function mostrarAviso(texto, tipo){
+  const a = document.getElementById("aviso");
+  a.textContent = texto;
+  a.className = "aviso " + tipo;
+}
+
+document.getElementById("form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const btn = document.getElementById("btn");
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  btn.disabled = true;
+
+  try{
+    if(modo === "setup"){
+      const nombre = document.getElementById("nombre").value.trim();
+      const r = await fetch("/api/setup", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({nombre, email, password})
+      });
+      const d = await r.json();
+      if(!r.ok){ mostrarAviso(d.error || "No se pudo crear la cuenta.", "error"); btn.disabled=false; return; }
+      mostrarAviso("Cuenta creada. Ingresando…", "info");
+      // ahora inicia sesion automaticamente
+      const rl = await fetch("/api/login", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({email, password})
+      });
+      if(rl.ok){ window.location.href = "/labores.html"; }
+      else { window.location.reload(); }
+    } else {
+      const r = await fetch("/api/login", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({email, password})
+      });
+      const d = await r.json();
+      if(!r.ok){ mostrarAviso(d.error || "No se pudo ingresar.", "error"); btn.disabled=false; return; }
+      window.location.href = "/labores.html";
+    }
+  }catch(err){
+    mostrarAviso("Error de conexión. Intenta de nuevo.", "error");
+    btn.disabled = false;
+  }
+});
+
+init();
+</script>
+</body>
+</html>

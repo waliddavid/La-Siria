@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Parámetros de nómina</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;--azul:#2c5866}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}
+  nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}
+  nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .salir:hover{background:rgba(255,255,255,.2)}
+  .contenedor{max-width:880px;margin:0 auto;padding:32px 28px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}
+  .sub{color:var(--gris);font-size:14px;margin-bottom:20px}
+  .barra-ia{background:#fff;border:1px solid var(--linea);border-radius:12px;padding:16px 18px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .barra-ia .txt{font-size:13.5px;color:var(--gris)}
+  .boton{background:var(--verde);color:#fff;border:none;padding:10px 16px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .boton.sec{background:#fff;color:var(--verde);border:1.5px solid var(--verde-claro)}
+  .boton.sec:hover{background:#f0f4ef}
+  .boton.ia{background:var(--azul)}
+  .boton.ia:hover{background:#22434f}
+  .periodo{background:#fff;border:1px solid var(--linea);border-radius:12px;padding:0;margin-bottom:18px;overflow:hidden}
+  .periodo-cab{padding:15px 20px;border-bottom:1px solid var(--linea);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .periodo-cab .desde{font-size:15px;font-weight:650;color:var(--verde-hondo)}
+  .periodo-cab .desde small{display:block;font-weight:400;color:var(--gris);font-size:12.5px;margin-top:2px}
+  .estado{display:inline-block;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:600}
+  .estado.aprobado{background:#e8efe6;color:var(--verde)}
+  .estado.pendiente{background:#fbf1d9;color:#8a6d1b}
+  .periodo-cuerpo{padding:16px 20px}
+  .params{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  .param{background:#f8f7f0;border-radius:9px;padding:10px 12px}
+  .param .et{font-size:11.5px;color:var(--gris);font-weight:600;margin-bottom:3px}
+  .param .vl{font-size:16px;font-weight:700;color:var(--tinta)}
+  .nota{font-size:12.5px;color:var(--gris);margin-top:12px;font-style:italic}
+  .fuente{font-size:12px;color:var(--azul);margin-top:6px}
+  .periodo-pie{padding:12px 20px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end;background:#fafaf5}
+  .accion{background:none;border:1px solid var(--linea);border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;color:var(--tinta);font-weight:600}
+  .accion:hover{border-color:var(--verde-claro)}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+  /* modal edicion */
+  .modal-fondo{display:none;position:fixed;inset:0;background:rgba(29,59,42,.5);align-items:flex-start;justify-content:center;padding:24px;z-index:10;overflow:auto}
+  .modal-fondo.abierto{display:flex}
+  .modal{background:var(--crema);border-radius:14px;width:100%;max-width:560px;box-shadow:0 24px 60px rgba(0,0,0,.3);margin:auto}
+  .modal-cab{padding:20px 26px 12px;border-bottom:1px solid var(--linea)}
+  .modal-cab h2{font-size:18px;color:var(--verde-hondo);font-weight:650}
+  .modal-cuerpo{padding:18px 26px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .campo{margin-bottom:13px}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  input{width:100%;padding:9px 11px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  input:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .ayuda{font-size:11.5px;color:var(--gris);margin-top:3px}
+  .modal-pie{padding:14px 26px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end}
+  .btn-sec{background:none;border:1px solid var(--linea);color:var(--tinta);padding:9px 15px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .aviso{padding:11px 14px;border-radius:9px;font-size:13.5px;margin-bottom:16px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+  .aviso.info{background:#e6eef0;color:var(--azul);border:1px solid #cfe0e4;display:block}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+      <a href="/planificador.html">Planificador</a>
+      <a href="/deberser.html">Deber ser</a>
+      <a href="/jornada.html">Jornada</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/asignacion.html">Asignación</a>
+      <a href="/materiales.html">Materiales</a>
+      <a href="/almacen.html">Almacén</a>
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html" class="activo">Nómina</a>
+      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <h1>Parámetros de nómina</h1>
+    <p class="sub">Jornada, franjas horarias y porcentajes de recargo, con la fecha desde la que aplica cada conjunto. El sistema usa los parámetros vigentes en la fecha de cada trabajo.</p>
+
+    <div id="nota-permiso" class="nota-permiso" style="display:none">
+      Estás viendo los parámetros. Contabilidad (o el administrador) los edita y aprueba.
+    </div>
+
+    <div class="barra-ia" id="barra-ia" style="display:none">
+      <div class="txt"><strong>Verificación con IA:</strong> comprueba si la normatividad vigente cambió respecto a estos parámetros, mostrando las diferencias con su fuente para aprobar.</div>
+      <button class="boton ia" onclick="verificarIA()">Verificar normatividad con IA</button>
+    </div>
+    <div id="aviso" class="aviso"></div>
+
+    <div id="cargando" class="cargando">Cargando…</div>
+    <div id="lista"></div>
+  </div>
+
+  <!-- Modal editar -->
+  <div class="modal-fondo" id="modal">
+    <div class="modal">
+      <div class="modal-cab"><h2 id="modal-titulo">Editar parámetros</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-modal" class="aviso"></div>
+        <div class="grid2">
+          <div class="campo"><label>Jornada semanal (horas)</label><input type="number" id="e-jornada" step="0.5"></div>
+          <div class="campo"><label>Recargo nocturno (%)</label><input type="number" id="e-nocturno" step="1"></div>
+        </div>
+        <div class="grid2">
+          <div class="campo"><label>Inicio nocturno</label><input type="time" id="e-noc-ini"></div>
+          <div class="campo"><label>Fin nocturno</label><input type="time" id="e-noc-fin"></div>
+        </div>
+        <div class="grid2">
+          <div class="campo"><label>Recargo dominical/festivo (%)</label><input type="number" id="e-dominical" step="1"></div>
+          <div class="campo"><label>Hora extra diurna (%)</label><input type="number" id="e-ex-diurna" step="1"></div>
+        </div>
+        <div class="grid2">
+          <div class="campo"><label>Hora extra nocturna (%)</label><input type="number" id="e-ex-nocturna" step="1"></div>
+          <div class="campo"><label>Extra dominical diurna (%)</label><input type="number" id="e-ex-dom-d" step="1"></div>
+        </div>
+        <div class="grid2">
+          <div class="campo"><label>Extra dominical nocturna (%)</label><input type="number" id="e-ex-dom-n" step="1"></div>
+        </div>
+        <div class="campo"><label>Fuente (ley / enlace de referencia)</label><input type="text" id="e-fuente"></div>
+        <div class="campo"><label>Nota</label><input type="text" id="e-nota"></div>
+        <p class="ayuda">Al guardar un cambio, este periodo queda <strong>pendiente de aprobación</strong> de nuevo.</p>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarModal()">Cancelar</button>
+        <button class="boton" id="btn-guardar" onclick="guardar()">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let puedeEditar=false, editandoId=null, datos=[];
+const meses=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+async function init(){
+  const rme=await fetch("/api/me");
+  if(!rme.ok){ window.location.href="/"; return; }
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  if(me.rol==="administrador") document.getElementById("nav-usuarios").style.display="inline-block";
+    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+  await cargar();
+}
+
+function fechaLarga(iso){
+  const [a,m,d]=iso.split("-").map(Number);
+  return `${d} ${meses[m-1]} ${a}`;
+}
+function pct(x){ return Math.round(x*100)+"%"; }
+
+async function cargar(){
+  const r=await fetch("/api/nomina/parametros");
+  const d=await r.json();
+  datos=d.parametros; puedeEditar=d.puede_editar;
+  if(puedeEditar){ document.getElementById("barra-ia").style.display="flex"; }
+  else { document.getElementById("nota-permiso").style.display="block"; }
+
+  const lista=document.getElementById("lista"); lista.innerHTML="";
+  // ordenar por vigencia ascendente para leer de lo mas viejo a lo nuevo
+  const ord=[...datos].sort((a,b)=>a.vigente_desde.localeCompare(b.vigente_desde));
+  ord.forEach(p=>{
+    const div=document.createElement("div"); div.className="periodo";
+    div.innerHTML=`
+      <div class="periodo-cab">
+        <div class="desde">Vigente desde ${fechaLarga(p.vigente_desde)}
+          ${p.nota?`<small>${escapar(p.nota)}</small>`:''}</div>
+        <span class="estado ${p.aprobado?'aprobado':'pendiente'}">${p.aprobado?'✓ Aprobado':'Pendiente'}</span>
+      </div>
+      <div class="periodo-cuerpo">
+        <div class="params">
+          <div class="param"><div class="et">Jornada semanal</div><div class="vl">${p.jornada_semanal_horas} h</div></div>
+          <div class="param"><div class="et">Nocturno desde</div><div class="vl">${p.nocturno_inicio}</div></div>
+          <div class="param"><div class="et">Recargo nocturno</div><div class="vl">${pct(p.rec_nocturno_pct)}</div></div>
+          <div class="param"><div class="et">Dominical/festivo</div><div class="vl">${pct(p.rec_dominical_pct)}</div></div>
+          <div class="param"><div class="et">Extra diurna</div><div class="vl">${pct(p.extra_diurna_pct)}</div></div>
+          <div class="param"><div class="et">Extra nocturna</div><div class="vl">${pct(p.extra_nocturna_pct)}</div></div>
+          <div class="param"><div class="et">Extra dom. diurna</div><div class="vl">${pct(p.extra_dom_diurna_pct)}</div></div>
+          <div class="param"><div class="et">Extra dom. nocturna</div><div class="vl">${pct(p.extra_dom_nocturna_pct)}</div></div>
+        </div>
+        ${p.fuente?`<div class="fuente">Fuente: ${escapar(p.fuente)}</div>`:''}
+      </div>
+      ${puedeEditar?`<div class="periodo-pie">
+        <button class="accion" onclick='abrirEditar(${p.id})'>Editar</button>
+        ${p.aprobado?'':`<button class="accion" style="color:var(--verde);border-color:#cfe0ca" onclick="aprobar(${p.id})">Aprobar este periodo</button>`}
+      </div>`:''}`;
+    lista.appendChild(div);
+  });
+  document.getElementById("cargando").style.display="none";
+}
+
+function abrirEditar(id){
+  const p=datos.find(x=>String(x.id)===String(id)); if(!p) return;
+  editandoId=p.id;
+  document.getElementById("modal-titulo").textContent="Editar parámetros (desde "+fechaLarga(p.vigente_desde)+")";
+  document.getElementById("e-jornada").value=p.jornada_semanal_horas;
+  document.getElementById("e-nocturno").value=Math.round(p.rec_nocturno_pct*100);
+  document.getElementById("e-noc-ini").value=p.nocturno_inicio;
+  document.getElementById("e-noc-fin").value=p.nocturno_fin;
+  document.getElementById("e-dominical").value=Math.round(p.rec_dominical_pct*100);
+  document.getElementById("e-ex-diurna").value=Math.round(p.extra_diurna_pct*100);
+  document.getElementById("e-ex-nocturna").value=Math.round(p.extra_nocturna_pct*100);
+  document.getElementById("e-ex-dom-d").value=Math.round(p.extra_dom_diurna_pct*100);
+  document.getElementById("e-ex-dom-n").value=Math.round(p.extra_dom_nocturna_pct*100);
+  document.getElementById("e-fuente").value=p.fuente||"";
+  document.getElementById("e-nota").value=p.nota||"";
+  document.getElementById("aviso-modal").className="aviso";
+  document.getElementById("modal").classList.add("abierto");
+}
+function cerrarModal(){ document.getElementById("modal").classList.remove("abierto"); }
+
+async function guardar(){
+  const btn=document.getElementById("btn-guardar"), aviso=document.getElementById("aviso-modal");
+  const body={
+    jornada_semanal_horas:parseFloat(document.getElementById("e-jornada").value),
+    nocturno_inicio:document.getElementById("e-noc-ini").value,
+    nocturno_fin:document.getElementById("e-noc-fin").value,
+    rec_nocturno_pct:parseFloat(document.getElementById("e-nocturno").value)/100,
+    rec_dominical_pct:parseFloat(document.getElementById("e-dominical").value)/100,
+    extra_diurna_pct:parseFloat(document.getElementById("e-ex-diurna").value)/100,
+    extra_nocturna_pct:parseFloat(document.getElementById("e-ex-nocturna").value)/100,
+    extra_dom_diurna_pct:parseFloat(document.getElementById("e-ex-dom-d").value)/100,
+    extra_dom_nocturna_pct:parseFloat(document.getElementById("e-ex-dom-n").value)/100,
+    fuente:document.getElementById("e-fuente").value.trim(),
+    nota:document.getElementById("e-nota").value.trim()
+  };
+  btn.disabled=true;
+  const r=await fetch(`/api/nomina/parametros/${editandoId}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json(); btn.disabled=false;
+  if(!r.ok){ aviso.textContent=d.error||"No se pudo guardar."; aviso.className="aviso error"; return; }
+  cerrarModal(); await cargar();
+}
+
+async function aprobar(id){
+  const r=await fetch(`/api/nomina/parametros/${id}/aprobar`,{method:"POST"});
+  const aviso=document.getElementById("aviso");
+  if(r.ok){ await cargar(); }
+  else {
+    const d=await r.json().catch(()=>({}));
+    aviso.className="aviso error";
+    aviso.textContent=d.error||"No se pudo aprobar. Refresca la página (Cmd+Shift+R) e intenta de nuevo.";
+  }
+}
+
+async function verificarIA(){
+  const aviso=document.getElementById("aviso");
+  aviso.className="aviso info"; aviso.textContent="Consultando…";
+  const r=await fetch("/api/nomina/verificar-ia",{method:"POST"});
+  const d=await r.json();
+  if(!r.ok){ aviso.className="aviso error"; aviso.textContent=d.error||"No se pudo verificar."; return; }
+  aviso.className="aviso info";
+  aviso.textContent=d.mensaje||"Verificación pendiente.";
+}
+
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+init();
+</script>
+<script>
+// Campanita de pendientes (inyectada en todas las paginas)
+(function(){
+  function crearCampanita(){
+    const nav=document.querySelector("header nav");
+    if(!nav) return;
+    const a=document.createElement("a");
+    a.href="/pendientes.html";
+    a.title="Centro de pendientes";
+    a.style.cssText="position:relative;display:inline-flex;align-items:center;gap:4px";
+    a.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="camp-rojo" style="display:none;background:#a4443a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span><span id="camp-azul" style="display:none;background:#2c5866;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span>';
+    nav.appendChild(a);
+    actualizarCampanita();
+    setInterval(actualizarCampanita, 60000); // refresca cada minuto
+  }
+  async function actualizarCampanita(){
+    try{
+      const r=await fetch("/api/pendientes/contadores");
+      if(!r.ok) return;
+      const d=await r.json();
+      const rojo=document.getElementById("camp-rojo"), azul=document.getElementById("camp-azul");
+      if(rojo){ if(d.por_resolver>0){ rojo.textContent=d.por_resolver; rojo.style.display="inline-block"; } else rojo.style.display="none"; }
+      if(azul){ if(d.por_leer>0){ azul.textContent=d.por_leer; azul.style.display="inline-block"; } else azul.style.display="none"; }
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",crearCampanita);
+  else crearCampanita();
+})();
+</script>
+
+</body>
+</html>

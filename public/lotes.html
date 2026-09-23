@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Lotes</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px}
+  nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}
+  nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .salir:hover{background:rgba(255,255,255,.2)}
+  .contenedor{max-width:1000px;margin:0 auto;padding:32px 28px}
+  .fila-titulo{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:12px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}
+  .sub{color:var(--gris);font-size:14px;margin-bottom:20px}
+  .boton{background:var(--verde);color:#fff;border:none;padding:11px 18px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .resumen{display:flex;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+  .tarjeta-num{background:#fff;border:1px solid var(--linea);border-radius:11px;padding:16px 20px;flex:1;min-width:150px}
+  .tarjeta-num .n{font-size:26px;font-weight:700;color:var(--verde-hondo)}
+  .tarjeta-num .t{font-size:12.5px;color:var(--gris);margin-top:2px}
+  .tarjeta-num.activa .n{color:var(--verde)}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:600px}
+  th{background:#f2f1e8;text-align:left;padding:12px 16px;font-size:12px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea);white-space:nowrap}
+  td{padding:13px 16px;font-size:13.5px;border-bottom:1px solid #f0efe6}
+  tr:last-child td{border-bottom:none}
+  tr.suspendido{background:#faf4f3}
+  tr.suspendido td:first-child{opacity:.6}
+  .ha{font-variant-numeric:tabular-nums}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600}
+  .badge.activo{background:#e8efe6;color:var(--verde)}
+  .badge.susp{background:#f3e0dd;color:var(--error)}
+  .badge.nino{background:#fbf1d9;color:#8a6d1b;margin-left:6px}
+  .accion{background:none;border:1px solid var(--linea);border-radius:7px;padding:6px 11px;font-size:12.5px;cursor:pointer;color:var(--tinta);margin-right:4px}
+  .accion:hover{border-color:var(--verde-claro)}
+  .accion.susp{color:var(--error);border-color:#e6c9c5}
+  .cargando{padding:50px;text-align:center;color:var(--gris)}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+  .modal-fondo{display:none;position:fixed;inset:0;background:rgba(29,59,42,.5);align-items:center;justify-content:center;padding:24px;z-index:10}
+  .modal-fondo.abierto{display:flex}
+  .modal{background:var(--crema);border-radius:14px;width:100%;max-width:440px;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+  .modal-cab{padding:22px 28px 14px;border-bottom:1px solid var(--linea)}
+  .modal-cab h2{font-size:19px;color:var(--verde-hondo);font-weight:650}
+  .modal-cuerpo{padding:20px 28px}
+  .campo{margin-bottom:15px}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px}
+  input{width:100%;padding:10px 12px;border:1.5px solid var(--linea);border-radius:9px;font-size:14px;background:#fff}
+  input:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .modal-pie{padding:16px 28px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end}
+  .btn-sec{background:none;border:1px solid var(--linea);color:var(--tinta);padding:10px 16px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .aviso{padding:10px 13px;border-radius:8px;font-size:13.5px;margin-bottom:14px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+  .nota-campo{font-size:12px;color:var(--gris);margin-top:5px}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+      <a href="/planificador.html">Planificador</a>
+      <a href="/deberser.html">Deber ser</a>
+      <a href="/jornada.html">Jornada</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/lotes.html" class="activo">Lotes</a>
+      <a href="/asignacion.html">Asignación</a>
+      <a href="/materiales.html">Materiales</a>
+      <a href="/almacen.html">Almacén</a>
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html">Nómina</a>
+      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <div class="fila-titulo">
+      <div><h1>Lotes</h1></div>
+      <button class="boton" id="btn-nuevo" onclick="abrirModal()" style="display:none">+ Nuevo lote</button>
+    </div>
+    <p class="sub">Los 18 lotes de la finca. Suspende los que salgan de operación (p. ej. en El Niño) y el total de hectáreas activas se recalcula solo.</p>
+
+    <div id="nota-permiso" class="nota-permiso" style="display:none">
+      Estás viendo los lotes. Para crear, editar o suspender uno, solicítalo al administrador.
+    </div>
+
+    <div class="resumen" id="resumen" style="display:none">
+      <div class="tarjeta-num activa"><div class="n" id="n-activas">—</div><div class="t">Hectáreas activas</div></div>
+      <div class="tarjeta-num"><div class="n" id="n-total">—</div><div class="t">Hectáreas totales</div></div>
+      <div class="tarjeta-num"><div class="n" id="n-lotes">—</div><div class="t">Lotes activos</div></div>
+    </div>
+
+    <div id="cargando" class="cargando">Cargando…</div>
+    <div class="tabla-caja" id="caja" style="display:none">
+      <table>
+        <thead>
+          <tr><th>Lote</th><th>Hectáreas</th><th>Densidad</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody id="cuerpo"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal crear/editar lote -->
+  <div class="modal-fondo" id="modal">
+    <div class="modal">
+      <div class="modal-cab"><h2 id="modal-titulo">Nuevo lote</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso" class="aviso"></div>
+        <div class="campo">
+          <label for="m-nombre">Nombre del lote</label>
+          <input type="text" id="m-nombre" placeholder="Ej: Lote 19">
+        </div>
+        <div class="campo">
+          <label for="m-ha">Hectáreas</label>
+          <input type="number" id="m-ha" step="0.001" placeholder="4.129">
+          <div class="nota-campo" id="nota-ha"></div>
+        </div>
+        <div class="campo">
+          <label for="m-densidad">Densidad (plantas por hectárea)</label>
+          <input type="number" id="m-densidad" step="1" placeholder="1540">
+          <div class="nota-campo">El ideal es 1800. Sirve para convertir el rendimiento de labores medidas en plantas.</div>
+        </div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarModal()">Cancelar</button>
+        <button class="boton" id="btn-guardar" onclick="guardar()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let esAdmin=false, editandoId=null, haOriginal=null;
+
+async function init(){
+  const rme=await fetch("/api/me");
+  if(!rme.ok){ window.location.href="/"; return; }
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  esAdmin=(me.rol==="administrador");
+  if(esAdmin){
+    document.getElementById("btn-nuevo").style.display="inline-block";
+    document.getElementById("nav-usuarios").style.display="inline-block";
+    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+  } else {
+    document.getElementById("nota-permiso").style.display="block";
+  }
+  await cargar();
+}
+
+async function cargar(){
+  const r=await fetch("/api/lotes");
+  const d=await r.json();
+  document.getElementById("n-activas").textContent=fmt(d.ha_activas)+" ha";
+  document.getElementById("n-total").textContent=fmt(d.ha_total)+" ha";
+  document.getElementById("n-lotes").textContent=d.lotes.filter(l=>l.activo).length+" / "+d.lotes.length;
+  document.getElementById("resumen").style.display="flex";
+
+  const cuerpo=document.getElementById("cuerpo"); cuerpo.innerHTML="";
+  d.lotes.forEach(l=>{
+    const tr=document.createElement("tr");
+    if(!l.activo) tr.className="suspendido";
+    tr.innerHTML=`
+      <td><strong>${escapar(l.nombre)}</strong>${l.se_suspende_nino?'<span class="badge nino">suspende en El Niño</span>':''}</td>
+      <td class="ha">${l.hectareas!=null?fmt(l.hectareas)+" ha":"—"}</td>
+      <td class="ha">${l.densidad_plantas_ha!=null?fmt(l.densidad_plantas_ha)+" pl/ha":"—"}</td>
+      <td>${l.activo?'<span class="badge activo">Activo</span>':'<span class="badge susp">Suspendido</span>'}</td>
+      <td>${esAdmin?botones(l):""}</td>
+    `;
+    cuerpo.appendChild(tr);
+  });
+  document.getElementById("cargando").style.display="none";
+  document.getElementById("caja").style.display="block";
+}
+
+function botones(l){
+  const editar=`<button class="accion" onclick='editar(${JSON.stringify(l)})'>Editar</button>`;
+  const estado=l.activo
+    ? `<button class="accion susp" onclick="cambiarEstado(${l.id},0)">Suspender</button>`
+    : `<button class="accion" onclick="cambiarEstado(${l.id},1)">Reactivar</button>`;
+  return editar+estado;
+}
+
+function abrirModal(){
+  editandoId=null; haOriginal=null;
+  document.getElementById("modal-titulo").textContent="Nuevo lote";
+  document.getElementById("m-nombre").value="";
+  document.getElementById("m-ha").value="";
+  document.getElementById("m-densidad").value="";
+  document.getElementById("nota-ha").textContent="";
+  document.getElementById("aviso").className="aviso";
+  document.getElementById("modal").classList.add("abierto");
+}
+
+function editar(l){
+  editandoId=l.id; haOriginal=l.hectareas;
+  document.getElementById("modal-titulo").textContent="Editar "+l.nombre;
+  document.getElementById("m-nombre").value=l.nombre||"";
+  document.getElementById("m-ha").value=l.hectareas??"";
+  document.getElementById("m-densidad").value=l.densidad_plantas_ha??"";
+  document.getElementById("nota-ha").textContent="Si cambias las hectáreas, se guarda como una versión nueva y se conserva el histórico anterior.";
+  document.getElementById("aviso").className="aviso";
+  document.getElementById("modal").classList.add("abierto");
+}
+
+function cerrarModal(){ document.getElementById("modal").classList.remove("abierto"); }
+
+async function guardar(){
+  const btn=document.getElementById("btn-guardar");
+  const aviso=document.getElementById("aviso");
+  const nombre=document.getElementById("m-nombre").value.trim();
+  const ha=document.getElementById("m-ha").value;
+  const densidad=document.getElementById("m-densidad").value;
+  const densidadVal = densidad!=="" ? parseFloat(densidad) : null;
+  if(!nombre){ aviso.textContent="El nombre es obligatorio."; aviso.className="aviso error"; return; }
+  btn.disabled=true;
+
+  if(editandoId){
+    // 1) actualizar nombre y densidad
+    const r1=await fetch(`/api/lotes/${editandoId}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre,densidad_plantas_ha:densidadVal})});
+    if(!r1.ok){ const d=await r1.json(); aviso.textContent=d.error||"No se pudo guardar."; aviso.className="aviso error"; btn.disabled=false; return; }
+    // 2) si cambio la hectarea, crear version nueva
+    if(ha!=="" && parseFloat(ha)!==haOriginal){
+      const r2=await fetch(`/api/lotes/${editandoId}/tamano`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({hectareas:ha})});
+      if(!r2.ok){ const d=await r2.json(); aviso.textContent=d.error||"No se pudo actualizar el tamaño."; aviso.className="aviso error"; btn.disabled=false; return; }
+    }
+  } else {
+    const r=await fetch("/api/lotes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre,hectareas:ha,densidad_plantas_ha:densidadVal})});
+    if(!r.ok){ const d=await r.json(); aviso.textContent=d.error||"No se pudo crear."; aviso.className="aviso error"; btn.disabled=false; return; }
+  }
+  btn.disabled=false;
+  cerrarModal();
+  await cargar();
+}
+
+async function cambiarEstado(id,activo){
+  const r=await fetch(`/api/lotes/${id}/estado`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({activo})});
+  if(r.ok) await cargar();
+}
+
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function fmt(n){return (Math.round(n*1000)/1000).toLocaleString('es-CO',{minimumFractionDigits:0,maximumFractionDigits:3})}
+
+init();
+</script>
+<script>
+// Campanita de pendientes (inyectada en todas las paginas)
+(function(){
+  function crearCampanita(){
+    const nav=document.querySelector("header nav");
+    if(!nav) return;
+    const a=document.createElement("a");
+    a.href="/pendientes.html";
+    a.title="Centro de pendientes";
+    a.style.cssText="position:relative;display:inline-flex;align-items:center;gap:4px";
+    a.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="camp-rojo" style="display:none;background:#a4443a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span><span id="camp-azul" style="display:none;background:#2c5866;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span>';
+    nav.appendChild(a);
+    actualizarCampanita();
+    setInterval(actualizarCampanita, 60000); // refresca cada minuto
+  }
+  async function actualizarCampanita(){
+    try{
+      const r=await fetch("/api/pendientes/contadores");
+      if(!r.ok) return;
+      const d=await r.json();
+      const rojo=document.getElementById("camp-rojo"), azul=document.getElementById("camp-azul");
+      if(rojo){ if(d.por_resolver>0){ rojo.textContent=d.por_resolver; rojo.style.display="inline-block"; } else rojo.style.display="none"; }
+      if(azul){ if(d.por_leer>0){ azul.textContent=d.por_leer; azul.style.display="inline-block"; } else azul.style.display="none"; }
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",crearCampanita);
+  else crearCampanita();
+})();
+</script>
+
+</body>
+</html>

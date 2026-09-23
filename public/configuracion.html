@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Configuración</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}.marca .hoja{width:22px;height:22px;color:#a9c9b2}.marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .contenedor{max-width:780px;margin:0 auto;padding:32px 24px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}.sub{color:var(--gris);font-size:14px;margin-bottom:22px}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+  .param{background:#fff;border:1px solid var(--linea);border-radius:12px;padding:18px 20px;margin-bottom:14px}
+  .param .nombre{font-weight:650;color:var(--verde-hondo);font-size:15px}
+  .param .desc{font-size:13px;color:var(--gris);margin:5px 0 12px}
+  .param .fila{display:flex;gap:10px;align-items:center}
+  .param input{padding:9px 12px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff;max-width:180px}
+  .param input:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .boton{background:var(--verde);color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .ok{color:var(--verde);font-size:13px;font-weight:600;opacity:0;transition:opacity .2s}
+  .ok.ver{opacity:1}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/></svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+      <a href="/planificador.html">Planificador</a>
+      <a href="/almacen.html">Almacén</a>
+      <a href="/configuracion.html" class="activo">Configuración</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual"><span id="quien"></span><button class="salir" onclick="salir()">Salir</button></div>
+  </header>
+  <div class="contenedor">
+    <h1>Configuración</h1>
+    <p class="sub">Parámetros ajustables del sistema. Aquí irán los ajustes nuevos de aquí en adelante.</p>
+    <div id="nota-permiso" class="nota-permiso" style="display:none">Estás viendo la configuración. Solo el administrador puede cambiarla.</div>
+    <div id="cargando" class="cargando">Cargando…</div>
+    <div id="lista"></div>
+  </div>
+<script>
+let puedeEditar=false, config=[];
+async function init(){
+  const rme=await fetch("/api/me"); if(!rme.ok){window.location.href="/";return;}
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  if(me.rol==="administrador") document.getElementById("nav-usuarios").style.display="inline-block";
+  await cargar();
+}
+async function cargar(){
+  const r=await fetch("/api/configuracion"); const d=await r.json();
+  config=d.configuracion; puedeEditar=d.puede_editar;
+  if(!puedeEditar) document.getElementById("nota-permiso").style.display="block";
+  const cont=document.getElementById("lista"); cont.innerHTML="";
+  config.forEach(p=>{
+    const div=document.createElement("div"); div.className="param";
+    const dis = puedeEditar ? "" : "disabled";
+    div.innerHTML=`
+      <div class="nombre">${escapar(nombreBonito(p.clave))}</div>
+      <div class="desc">${escapar(p.descripcion||"")}</div>
+      <div class="fila">
+        ${(p.clave==='embolse_labor_id'||p.clave==='bolsas_material_id')
+          ? `<select id="v-${p.clave}" ${dis}></select>`
+          : `<input type="${p.tipo==='texto'?'text':'number'}" id="v-${p.clave}" value="${escapar(p.valor||'')}" ${dis} step="0.01">`}
+        ${puedeEditar?`<button class="boton" onclick="guardar('${p.clave}')">Guardar</button><span class="ok" id="ok-${p.clave}">✓ guardado</span>`:''}
+      </div>`;
+    cont.appendChild(div);
+  });
+  document.getElementById("cargando").style.display="none";
+  cargarSelectsCruce();
+}
+async function cargarSelectsCruce(){
+  try{
+    const rl=await fetch("/api/labores");
+    if(rl.ok){
+      const d=await rl.json();
+      const sel=document.getElementById("v-embolse_labor_id");
+      if(sel){
+        sel.innerHTML='<option value="">— sin definir —</option>'+d.labores.filter(l=>l.activo).map(l=>`<option value="${l.id}">${escapar((l.codigo?l.codigo+" · ":"")+l.nombre)}</option>`).join("");
+        const val=(config.find(p=>p.clave==='embolse_labor_id')||{}).valor;
+        if(val) sel.value=val;
+      }
+    }
+  }catch(e){}
+  try{
+    const rm=await fetch("/api/materiales");
+    if(rm.ok){
+      const d=await rm.json();
+      const sel=document.getElementById("v-bolsas_material_id");
+      if(sel){
+        sel.innerHTML='<option value="">— sin definir —</option>'+d.materiales.filter(m=>m.activo).map(m=>`<option value="${m.id}">${escapar((m.codigo?m.codigo+" · ":"")+m.nombre)}</option>`).join("");
+        const val=(config.find(p=>p.clave==='bolsas_material_id')||{}).valor;
+        if(val) sel.value=val;
+      }
+    }
+  }catch(e){}
+}
+function nombreBonito(clave){
+  const map={max_racimos_ha_semana:"Máximo de racimos por hectárea / semana",
+      embolse_labor_id:"Labor de embolse (cruce bolsas vs. embolse)",
+      bolsas_material_id:"Material de bolsas de embolse",
+      bolsas_por_racimo:"Bolsas por racimo (ratio esperado)",
+      bolsas_tolerancia_pct:"Tolerancia % sobre consumo de bolsas"};
+  return map[clave] || clave.replace(/_/g," ");
+}
+async function guardar(clave){
+  const valor=document.getElementById("v-"+clave).value;
+  const r=await fetch(`/api/configuracion/${clave}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({valor})});
+  if(r.ok){ const ok=document.getElementById("ok-"+clave); ok.classList.add("ver"); setTimeout(()=>ok.classList.remove("ver"),1500); }
+  else { const d=await r.json(); alert(d.error||"No se pudo guardar."); }
+}
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+init();
+</script>
+</body>
+</html>

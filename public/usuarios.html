@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Usuarios</title>
+<style>
+  :root{
+    --verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;
+    --crema:#f5f3ec;--tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;
+    --linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh;
+  }
+  header{
+    background:var(--verde-hondo);color:#fff;
+    padding:16px 28px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px;letter-spacing:.02em}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:16px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;
+    border-radius:7px;font-size:13px;cursor:pointer}
+  .salir:hover{background:rgba(255,255,255,.2)}
+  .contenedor{max-width:1000px;margin:0 auto;padding:32px 28px}
+  .fila-titulo{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo);letter-spacing:-.01em}
+  .sub{color:var(--gris);font-size:14px;margin-top:3px}
+  .boton{background:var(--verde);color:#fff;border:none;padding:11px 18px;border-radius:9px;
+    font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  th{background:#f2f1e8;text-align:left;padding:13px 18px;font-size:12.5px;
+    font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea)}
+  td{padding:14px 18px;font-size:14px;border-bottom:1px solid #f0efe6}
+  tr:last-child td{border-bottom:none}
+  .rol-chip{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;
+    background:#e8efe6;color:var(--verde);font-weight:600;text-transform:capitalize}
+  .estado{font-size:12.5px;font-weight:600}
+  .estado.activo{color:var(--verde)}
+  .estado.inactivo{color:var(--gris)}
+  .accion{background:none;border:1px solid var(--linea);border-radius:7px;padding:6px 11px;
+    font-size:12.5px;cursor:pointer;color:var(--tinta)}
+  .accion:hover{border-color:var(--verde-claro)}
+  .vacio{padding:40px;text-align:center;color:var(--gris);font-size:14px}
+  /* modal */
+  .modal-fondo{display:none;position:fixed;inset:0;background:rgba(29,59,42,.5);
+    align-items:center;justify-content:center;padding:24px;z-index:10}
+  .modal-fondo.abierto{display:flex}
+  .modal{background:var(--crema);border-radius:14px;width:100%;max-width:440px;
+    box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden}
+  .modal-cab{padding:24px 28px 16px;border-bottom:1px solid var(--linea)}
+  .modal-cab h2{font-size:19px;color:var(--verde-hondo);font-weight:650}
+  .modal-cuerpo{padding:22px 28px}
+  .campo{margin-bottom:16px}
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+  input,select{width:100%;padding:11px 13px;border:1.5px solid var(--linea);
+    border-radius:9px;font-size:14.5px;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .modal-pie{padding:16px 28px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end}
+  .btn-sec{background:none;border:1px solid var(--linea);color:var(--tinta);padding:10px 16px;
+    border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .aviso{padding:10px 13px;border-radius:8px;font-size:13.5px;margin-bottom:16px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+  .cargando{padding:50px;text-align:center;color:var(--gris)}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav style="display:flex;gap:6px">
+      <a href="/dashboard.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Dashboard</a>
+      <a href="/reporte.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Reporte</a>
+      <a href="/planificador.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Planificador</a>
+      <a href="/deberser.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Deber ser</a>
+      <a href="/jornada.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Jornada</a>
+      <a href="/labores.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Labores</a>
+      <a href="/lotes.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Lotes</a>
+      <a href="/asignacion.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Asignación</a>
+      <a href="/materiales.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Materiales</a>
+      <a href="/almacen.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Almacén</a>
+      <a href="/trabajadores.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Trabajadores</a>
+      <a href="/festivos.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Festivos</a>
+      <a href="/nomina.html" style="color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px">Nómina</a>
+      <a href="/usuarios.html" style="color:#fff;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px;background:rgba(255,255,255,.16);font-weight:600">Usuarios</a>
+    </nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <div class="fila-titulo">
+      <div>
+        <h1>Usuarios</h1>
+        <p class="sub">Crea y administra las cuentas del equipo.</p>
+      </div>
+      <button class="boton" onclick="abrirModal()">+ Nuevo usuario</button>
+    </div>
+
+    <div id="cargando" class="cargando">Cargando…</div>
+    <div class="tabla-caja" id="caja-tabla" style="display:none">
+      <table>
+        <thead>
+          <tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Ubicación</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody id="cuerpo"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal crear usuario -->
+  <div class="modal-fondo" id="modal">
+    <div class="modal">
+      <div class="modal-cab"><h2>Nuevo usuario</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-modal" class="aviso"></div>
+        <div class="campo">
+          <label for="m-nombre">Nombre completo</label>
+          <input type="text" id="m-nombre">
+        </div>
+        <div class="campo">
+          <label for="m-email">Correo</label>
+          <input type="email" id="m-email">
+        </div>
+        <div class="campo">
+          <label for="m-rol">Rol</label>
+          <select id="m-rol"></select>
+        </div>
+        <div class="campo">
+          <label for="m-ubicacion">Ubicación</label>
+          <select id="m-ubicacion">
+            <option value="finca">Finca</option>
+            <option value="barranquilla">Barranquilla</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="m-pass">Contraseña inicial (mínimo 8)</label>
+          <input type="text" id="m-pass" placeholder="La podrá cambiar después">
+        </div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarModal()">Cancelar</button>
+        <button class="boton" id="btn-crear" onclick="crearUsuario()">Crear usuario</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal restablecer contraseña -->
+  <div class="modal-fondo" id="modal-reset">
+    <div class="modal">
+      <div class="modal-cab"><h2 id="reset-titulo">Restablecer contraseña</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-reset" class="aviso"></div>
+        <p style="font-size:13.5px;color:var(--gris);margin-bottom:12px">Escribe la nueva contraseña para <strong id="reset-nombre"></strong>. Anótala y entrégasela: no se puede ver después.</p>
+        <div class="campo">
+          <label for="r-pass">Nueva contraseña (mínimo 8)</label>
+          <input type="text" id="r-pass" placeholder="Nueva contraseña">
+        </div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarReset()">Cancelar</button>
+        <button class="boton" id="btn-reset" onclick="confirmarReset()">Restablecer</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+async function init(){
+  // verifica sesion
+  const rme = await fetch("/api/me");
+  if(!rme.ok){ window.location.href = "/"; return; }
+  const me = await rme.json();
+  if(me.rol !== "administrador"){
+    document.querySelector(".contenedor").innerHTML =
+      '<div class="vacio" style="background:#fff;border-radius:12px;border:1px solid var(--linea)">Esta sección es solo para el administrador.</div>';
+    document.getElementById("quien").textContent = me.nombre + " · " + me.rol;
+    return;
+  }
+  document.getElementById("quien").textContent = me.nombre + " · administrador";
+  await cargarRoles();
+  await cargarUsuarios();
+}
+
+async function cargarRoles(){
+  const r = await fetch("/api/roles");
+  const d = await r.json();
+  const sel = document.getElementById("m-rol");
+  sel.innerHTML = "";
+  d.roles.forEach(rol=>{
+    const o = document.createElement("option");
+    o.value = rol.id;
+    o.textContent = rol.nombre.replace(/_/g," ");
+    o.style.textTransform = "capitalize";
+    sel.appendChild(o);
+  });
+}
+
+async function cargarUsuarios(){
+  const r = await fetch("/api/usuarios");
+  const d = await r.json();
+  const cuerpo = document.getElementById("cuerpo");
+  cuerpo.innerHTML = "";
+  d.usuarios.forEach(u=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapar(u.nombre)}</td>
+      <td>${escapar(u.email)}</td>
+      <td><span class="rol-chip">${escapar(u.rol.replace(/_/g," "))}</span></td>
+      <td>${u.ubicacion ? escapar(u.ubicacion) : "—"}</td>
+      <td><span class="estado ${u.activo?'activo':'inactivo'}">${u.activo?'Activo':'Inactivo'}</span></td>
+      <td>${u.rol==='administrador' ? '' :
+        `<button class="accion" onclick="cambiarEstado(${u.id}, ${u.activo?0:1})">${u.activo?'Desactivar':'Activar'}</button>`}
+        <button class="accion" onclick='resetPass(${u.id}, ${JSON.stringify(u.nombre)})'>Restablecer contraseña</button></td>
+    `;
+    cuerpo.appendChild(tr);
+  });
+  document.getElementById("cargando").style.display = "none";
+  document.getElementById("caja-tabla").style.display = "block";
+}
+
+function abrirModal(){ document.getElementById("modal").classList.add("abierto"); }
+function cerrarModal(){
+  document.getElementById("modal").classList.remove("abierto");
+  document.getElementById("aviso-modal").className = "aviso";
+  ["m-nombre","m-email","m-pass"].forEach(id=>document.getElementById(id).value="");
+}
+
+async function crearUsuario(){
+  const btn = document.getElementById("btn-crear");
+  const nombre = document.getElementById("m-nombre").value.trim();
+  const email = document.getElementById("m-email").value.trim();
+  const rol_id = parseInt(document.getElementById("m-rol").value,10);
+  const ubicacion = document.getElementById("m-ubicacion").value;
+  const password = document.getElementById("m-pass").value;
+  const aviso = document.getElementById("aviso-modal");
+
+  if(!nombre||!email||!password){ aviso.textContent="Completa nombre, correo y contraseña."; aviso.className="aviso error"; return; }
+  if(password.length<8){ aviso.textContent="La contraseña debe tener al menos 8 caracteres."; aviso.className="aviso error"; return; }
+
+  btn.disabled=true;
+  const r = await fetch("/api/usuarios",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({nombre,email,password,rol_id,ubicacion})
+  });
+  const d = await r.json();
+  btn.disabled=false;
+  if(!r.ok){ aviso.textContent=d.error||"No se pudo crear."; aviso.className="aviso error"; return; }
+  cerrarModal();
+  await cargarUsuarios();
+}
+
+async function cambiarEstado(id, activo){
+  const r = await fetch(`/api/usuarios/${id}/estado`,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({activo})
+  });
+  if(r.ok) await cargarUsuarios();
+}
+
+let resetUserId=null;
+function resetPass(id, nombre){
+  resetUserId=id;
+  document.getElementById("reset-nombre").textContent=nombre;
+  document.getElementById("r-pass").value="";
+  document.getElementById("aviso-reset").className="aviso";
+  document.getElementById("modal-reset").classList.add("abierto");
+}
+function cerrarReset(){ document.getElementById("modal-reset").classList.remove("abierto"); }
+async function confirmarReset(){
+  const btn=document.getElementById("btn-reset"), aviso=document.getElementById("aviso-reset");
+  const pass=document.getElementById("r-pass").value;
+  if(!pass||pass.length<8){ aviso.textContent="La contraseña debe tener al menos 8 caracteres."; aviso.className="aviso error"; return; }
+  btn.disabled=true;
+  const r=await fetch(`/api/usuarios/${resetUserId}/password`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pass})});
+  const d=await r.json(); btn.disabled=false;
+  if(!r.ok){ aviso.textContent=d.error||"No se pudo restablecer."; aviso.className="aviso error"; return; }
+  cerrarReset();
+  alert("Contraseña restablecida. Entrégasela al usuario.");
+}
+
+async function salir(){
+  await fetch("/api/logout",{method:"POST"});
+  window.location.href = "/";
+}
+
+function escapar(s){
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+init();
+</script>
+<script>
+// Campanita de pendientes (inyectada en todas las paginas)
+(function(){
+  function crearCampanita(){
+    const nav=document.querySelector("header nav");
+    if(!nav) return;
+    const a=document.createElement("a");
+    a.href="/pendientes.html";
+    a.title="Centro de pendientes";
+    a.style.cssText="position:relative;display:inline-flex;align-items:center;gap:4px";
+    a.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="camp-rojo" style="display:none;background:#a4443a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span><span id="camp-azul" style="display:none;background:#2c5866;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span>';
+    nav.appendChild(a);
+    actualizarCampanita();
+    setInterval(actualizarCampanita, 60000); // refresca cada minuto
+  }
+  async function actualizarCampanita(){
+    try{
+      const r=await fetch("/api/pendientes/contadores");
+      if(!r.ok) return;
+      const d=await r.json();
+      const rojo=document.getElementById("camp-rojo"), azul=document.getElementById("camp-azul");
+      if(rojo){ if(d.por_resolver>0){ rojo.textContent=d.por_resolver; rojo.style.display="inline-block"; } else rojo.style.display="none"; }
+      if(azul){ if(d.por_leer>0){ azul.textContent=d.por_leer; azul.style.display="inline-block"; } else azul.style.display="none"; }
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",crearCampanita);
+  else crearCampanita();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Pendientes</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;--azul:#2c5866}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}.marca .hoja{width:22px;height:22px;color:#a9c9b2}.marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .contenedor{max-width:900px;margin:0 auto;padding:32px 24px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}.sub{color:var(--gris);font-size:14px;margin-bottom:20px}
+  .filtros{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .fbtn{padding:8px 14px;border:1.5px solid var(--linea);background:#fff;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--tinta)}
+  .fbtn.activo{background:var(--verde);color:#fff;border-color:var(--verde)}
+  .lista{display:flex;flex-direction:column;gap:10px}
+  .pend{background:#fff;border:1px solid var(--linea);border-radius:11px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start}
+  .pend.resuelto{opacity:.55}
+  .badge-tipo{flex:none;width:10px;height:10px;border-radius:50%;margin-top:5px}
+  .badge-tipo.resolver{background:var(--error)}
+  .badge-tipo.informativa{background:var(--azul)}
+  .pend .cuerpo{flex:1;min-width:0}
+  .pend .tit{font-weight:650;font-size:14.5px;color:var(--verde-hondo)}
+  .pend .det{font-size:13px;color:var(--gris);margin-top:3px}
+  .pend .meta{font-size:11.5px;color:var(--gris);margin-top:6px}
+  .estado-chip{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
+  .estado-chip.abierto{background:#fbf1d9;color:#8a6d1b}
+  .estado-chip.leido{background:#e6eef0;color:var(--azul)}
+  .estado-chip.resuelto{background:#e8efe6;color:var(--verde)}
+  .accion{background:none;border:1px solid var(--linea);border-radius:7px;padding:7px 12px;font-size:12.5px;cursor:pointer;color:var(--tinta);white-space:nowrap}
+  .accion:hover{border-color:var(--verde-claro)}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+  .vacio{padding:40px;text-align:center;color:var(--gris)}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/></svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+      <a href="/planificador.html">Planificador</a>
+      <a href="/almacen.html">Almacén</a>
+      <a href="/pendientes.html" class="activo">Pendientes</a>
+      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual"><span id="quien"></span><button class="salir" onclick="salir()">Salir</button></div>
+  </header>
+  <div class="contenedor">
+    <h1>Centro de pendientes</h1>
+    <p class="sub">Tus notificaciones y tareas. En <span style="color:var(--error);font-weight:600">rojo</span> las que hay que resolver; en <span style="color:var(--azul);font-weight:600">azul</span> las informativas.</p>
+
+    <div class="filtros">
+      <button class="fbtn activo" id="f-abiertos" onclick="setFiltro('abiertos')">Abiertos</button>
+      <button class="fbtn" id="f-todos" onclick="setFiltro('todos')">Todos (con resueltos)</button>
+      <button class="fbtn" id="f-admin" onclick="setFiltro('admin')" style="display:none">Ver de todos (admin)</button>
+    </div>
+
+    <div id="cargando" class="cargando">Cargando…</div>
+    <div id="vacio" class="vacio" style="display:none">No tienes pendientes. 🎉</div>
+    <div class="lista" id="lista"></div>
+  </div>
+<script>
+let filtro="abiertos", esAdmin=false, pendientes=[];
+async function init(){
+  const rme=await fetch("/api/me"); if(!rme.ok){window.location.href="/";return;}
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  esAdmin=(me.rol==="administrador");
+  if(esAdmin){ document.getElementById("nav-usuarios").style.display="inline-block";
+    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block"; document.getElementById("f-admin").style.display="inline-block"; }
+  await cargar();
+}
+function setFiltro(f){
+  filtro=f;
+  document.getElementById("f-abiertos").classList.toggle("activo",f==="abiertos");
+  document.getElementById("f-todos").classList.toggle("activo",f==="todos");
+  document.getElementById("f-admin").classList.toggle("activo",f==="admin");
+  cargar();
+}
+async function cargar(){
+  document.getElementById("cargando").style.display="block";
+  const url = filtro==="admin" ? "/api/pendientes?todos=1" : "/api/pendientes";
+  const r=await fetch(url); const d=await r.json();
+  pendientes=d.pendientes;
+  document.getElementById("cargando").style.display="none";
+  pintar();
+}
+function pintar(){
+  const cont=document.getElementById("lista"); cont.innerHTML="";
+  // separar agrupados de sueltos (sobre TODOS los pendientes cargados)
+  const grupos={}; const sueltos=[];
+  pendientes.forEach(p=>{ if(p.grupo){ (grupos[p.grupo]=grupos[p.grupo]||[]).push(p); } else sueltos.push(p); });
+
+  // sueltos: en "abiertos" solo los abiertos; en otros, todos
+  let sueltosMostrar = (filtro==="abiertos") ? sueltos.filter(p=>p.estado==="abierto") : sueltos;
+  let hayAlgo = sueltosMostrar.length>0;
+  sueltosMostrar.forEach(p=>cont.appendChild(tarjetaPendiente(p)));
+
+  // grupos: en "abiertos" solo grupos con al menos 1 sin leer (pero muestran todos sus items con chulo)
+  Object.keys(grupos).forEach(g=>{
+    const items=grupos[g].slice().sort((a,b)=>(a.creado_en||"").localeCompare(b.creado_en||""));
+    const sinLeer=items.filter(p=>p.estado==="abierto").length;
+    if(filtro==="abiertos" && sinLeer===0) return; // en abiertos, ocultar grupos ya todos leidos
+    hayAlgo=true;
+    const caja=document.createElement("div");
+    caja.style.cssText="background:#fff;border:1px solid var(--linea);border-radius:11px;overflow:hidden";
+    caja.innerHTML=`<div style="padding:12px 16px;background:#eef2ea;border-bottom:1px solid var(--linea);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:700;color:var(--verde-hondo)">${escapar(g)} <span style="font-weight:400;color:var(--gris);font-size:12px">(${sinLeer} sin leer de ${items.length})</span></span>
+      <button class="accion" onclick="borrarLeidos('${escapar(g).replace(/'/g,"")}')">Borrar leídos</button>
+    </div>`;
+    const inner=document.createElement("div"); inner.style.cssText="padding:6px 10px";
+    items.forEach(p=>inner.appendChild(itemGrupo(p)));
+    caja.appendChild(inner);
+    cont.appendChild(caja);
+  });
+
+  document.getElementById("vacio").style.display = hayAlgo ? "none" : "block";
+}
+
+function itemGrupo(p){
+  const div=document.createElement("div");
+  div.style.cssText="display:flex;gap:10px;align-items:flex-start;padding:9px 6px;border-bottom:1px solid #f4f3ec";
+  const fecha=p.creado_en?p.creado_en.slice(0,16).replace("T"," "):"";
+  const leido = p.estado!=="abierto";
+  const chulo = leido ? '<span style="color:var(--verde);font-weight:700" title="Leído">✓</span>' : '<span style="width:14px;display:inline-block"></span>';
+  let acciones="";
+  if(!leido && p.tipo==="informativa") acciones=`<button class="accion" onclick="marcarLeido(${p.id})">Marcar leído</button>`;
+  if(leido) acciones=`<span style="cursor:pointer;color:var(--error);font-weight:700;padding:0 6px" title="Borrar" onclick="borrarUno(${p.id})">✕</span>`;
+  div.innerHTML=`
+    <div style="margin-top:2px">${chulo}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13.5px;${leido?'color:var(--gris)':'font-weight:600'}">${escapar(p.titulo)}</div>
+      ${p.detalle?`<div style="font-size:12px;color:var(--gris);margin-top:2px">${escapar(p.detalle)}</div>`:''}
+      <div style="font-size:11px;color:var(--gris);margin-top:3px">${fecha}</div>
+    </div>
+    <div>${acciones}</div>`;
+  return div;
+}
+
+function tarjetaPendiente(p){
+  const div=document.createElement("div"); div.className="pend"+(p.estado==="resuelto"?" resuelto":"");
+  const fecha=p.creado_en?p.creado_en.slice(0,16).replace("T"," "):"";
+  const dest = p.usuario_nombre ? ("para "+escapar(p.usuario_nombre)) : (p.rol?("para "+escapar(p.rol)):"");
+  let accion="";
+  if(p.estado==="abierto"){
+    if(p.tipo==="informativa") accion=`<button class="accion" onclick="marcarLeido(${p.id})">Marcar leído</button>`;
+    else accion=`<span class="estado-chip abierto">por resolver</span>`;
+  } else {
+    accion=`<span class="estado-chip ${p.estado}">${p.estado}</span> <span style="cursor:pointer;color:var(--error);font-weight:700;padding:0 6px" title="Borrar" onclick="borrarUno(${p.id})">✕</span>`;
+  }
+  div.innerHTML=`
+    <div class="badge-tipo ${p.tipo}"></div>
+    <div class="cuerpo">
+      <div class="tit">${escapar(p.titulo)}</div>
+      ${p.detalle?`<div class="det">${escapar(p.detalle)}</div>`:''}
+      <div class="meta">${fecha} · ${escapar(p.origen||'')} ${dest?'· '+dest:''}</div>
+    </div>
+    <div>${accion}</div>`;
+  return div;
+}
+async function borrarUno(id){
+  const r=await fetch(`/api/pendientes/${id}`,{method:"DELETE"});
+  if(r.ok) await cargar(); else { const d=await r.json(); alert(d.error||"No se pudo."); }
+}
+async function borrarLeidos(grupo){
+  const r=await fetch("/api/pendientes/borrar-leidos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({grupo})});
+  if(r.ok) await cargar();
+}
+async function marcarLeido(id){
+  const r=await fetch(`/api/pendientes/${id}/leido`,{method:"POST"});
+  if(r.ok) await cargar();
+  else { const d=await r.json(); alert(d.error||"No se pudo."); }
+}
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+init();
+</script>
+</body>
+</html>

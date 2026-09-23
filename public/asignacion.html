@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Asignación de coordinadores</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}
+  nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}
+  nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .salir:hover{background:rgba(255,255,255,.2)}
+  .contenedor{max-width:880px;margin:0 auto;padding:32px 28px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}
+  .sub{color:var(--gris);font-size:14px;margin-bottom:22px}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+  .resumen{display:flex;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+  .tarjeta{background:#fff;border:1px solid var(--linea);border-radius:11px;padding:14px 18px;flex:1;min-width:150px}
+  .tarjeta .n{font-size:22px;font-weight:700;color:var(--verde-hondo)}
+  .tarjeta .t{font-size:12.5px;color:var(--gris)}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:520px}
+  th{background:#f2f1e8;text-align:left;padding:12px 18px;font-size:12px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea)}
+  td{padding:11px 18px;font-size:14px;border-bottom:1px solid #f0efe6;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr.zona{background:#f4f1e8}
+  tr.suspendido td:first-child{opacity:.5}
+  .zona-badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;background:#efe9dc;color:#8a6d1b;font-weight:600;margin-left:8px}
+  select{padding:8px 11px;border:1.5px solid var(--linea);border-radius:8px;font-size:13.5px;background:#fff;min-width:180px}
+  select:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  select.sin{color:var(--gris)}
+  .guardado{font-size:12px;color:var(--verde);font-weight:600;opacity:0;transition:opacity .2s}
+  .guardado.ver{opacity:1}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+      <a href="/planificador.html">Planificador</a>
+      <a href="/deberser.html">Deber ser</a>
+      <a href="/jornada.html">Jornada</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/asignacion.html" class="activo">Asignación</a>
+      <a href="/materiales.html">Materiales</a>
+      <a href="/almacen.html">Almacén</a>
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html">Nómina</a>
+      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <h1>Asignación de coordinadores a lotes</h1>
+    <p class="sub">Define qué coordinador vigila las labores de cada lote. Cada lote lo vigila un solo coordinador. La empacadora se puede reasignar según el día de corte.</p>
+
+    <div id="nota-permiso" class="nota-permiso" style="display:none">
+      Esta sección la administra el administrador.
+    </div>
+
+    <div id="cargando" class="cargando">Cargando…</div>
+    <div id="contenido" style="display:none">
+      <div class="resumen" id="resumen"></div>
+      <div class="tabla-caja">
+        <table>
+          <thead><tr><th>Lote / Zona</th><th>Coordinador asignado</th><th></th></tr></thead>
+          <tbody id="cuerpo"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+let esAdmin=false, coordinadores=[], lotes=[];
+
+async function init(){
+  const rme=await fetch("/api/me");
+  if(!rme.ok){ window.location.href="/"; return; }
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  esAdmin=(me.rol==="administrador");
+  if(esAdmin) document.getElementById("nav-usuarios").style.display="inline-block";
+    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+  else { document.getElementById("nota-permiso").style.display="block"; }
+  await cargarCoordinadores();
+  await cargar();
+}
+
+async function cargarCoordinadores(){
+  const r=await fetch("/api/coordinadores");
+  if(r.ok){ const d=await r.json(); coordinadores=d.coordinadores; }
+}
+
+async function cargar(){
+  const r=await fetch("/api/lotes");
+  const d=await r.json();
+  lotes=d.lotes;
+  const cuerpo=document.getElementById("cuerpo"); cuerpo.innerHTML="";
+  lotes.forEach(l=>{
+    const tr=document.createElement("tr");
+    if(l.es_zona_especial) tr.className="zona";
+    if(!l.activo) tr.className=(tr.className+" suspendido").trim();
+    // selector de coordinador (solo admin puede cambiar)
+    let control;
+    if(esAdmin){
+      const opts=['<option value="">— Sin asignar —</option>'].concat(
+        coordinadores.map(c=>`<option value="${c.id}" ${c.id===l.coordinador_id?'selected':''}>${escapar(c.nombre)}</option>`)
+      ).join("");
+      control=`<select class="${l.coordinador_id?'':'sin'}" onchange="asignar(${l.id}, this.value, this)">${opts}</select>`;
+    } else {
+      control = l.coordinador_nombre ? escapar(l.coordinador_nombre) : '<span style="color:var(--gris)">Sin asignar</span>';
+    }
+    tr.innerHTML=`
+      <td><strong>${escapar(l.nombre)}</strong>${l.es_zona_especial?'<span class="zona-badge">zona</span>':''}${!l.activo?' <small style="color:var(--gris)">(suspendido)</small>':''}</td>
+      <td>${control}</td>
+      <td><span class="guardado" id="ok-${l.id}">✓ guardado</span></td>`;
+    cuerpo.appendChild(tr);
+  });
+  pintarResumen();
+  document.getElementById("cargando").style.display="none";
+  document.getElementById("contenido").style.display="block";
+}
+
+function pintarResumen(){
+  const res=document.getElementById("resumen");
+  const asignados=lotes.filter(l=>l.coordinador_id).length;
+  const sinAsignar=lotes.filter(l=>!l.coordinador_id && l.activo).length;
+  // conteo por coordinador
+  const porCoord={};
+  lotes.forEach(l=>{ if(l.coordinador_id){ porCoord[l.coordinador_id]=(porCoord[l.coordinador_id]||0)+1; } });
+  let html=`
+    <div class="tarjeta"><div class="n">${asignados}</div><div class="t">Lotes/zonas asignados</div></div>
+    <div class="tarjeta"><div class="n">${sinAsignar}</div><div class="t">Sin asignar (activos)</div></div>
+    <div class="tarjeta"><div class="n">${coordinadores.length}</div><div class="t">Coordinadores</div></div>`;
+  res.innerHTML=html;
+}
+
+async function asignar(loteId, coordId, sel){
+  const r=await fetch(`/api/lotes/${loteId}/coordinador`,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({coordinador_id: coordId?parseInt(coordId,10):null})
+  });
+  if(r.ok){
+    // feedback visual
+    const ok=document.getElementById("ok-"+loteId);
+    if(ok){ ok.classList.add("ver"); setTimeout(()=>ok.classList.remove("ver"),1500); }
+    sel.className = coordId ? "" : "sin";
+    // actualizar el estado local y el resumen
+    const l=lotes.find(x=>x.id===loteId); if(l){ l.coordinador_id=coordId?parseInt(coordId,10):null; }
+    pintarResumen();
+  }
+}
+
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+init();
+</script>
+<script>
+// Campanita de pendientes (inyectada en todas las paginas)
+(function(){
+  function crearCampanita(){
+    const nav=document.querySelector("header nav");
+    if(!nav) return;
+    const a=document.createElement("a");
+    a.href="/pendientes.html";
+    a.title="Centro de pendientes";
+    a.style.cssText="position:relative;display:inline-flex;align-items:center;gap:4px";
+    a.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="camp-rojo" style="display:none;background:#a4443a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span><span id="camp-azul" style="display:none;background:#2c5866;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span>';
+    nav.appendChild(a);
+    actualizarCampanita();
+    setInterval(actualizarCampanita, 60000); // refresca cada minuto
+  }
+  async function actualizarCampanita(){
+    try{
+      const r=await fetch("/api/pendientes/contadores");
+      if(!r.ok) return;
+      const d=await r.json();
+      const rojo=document.getElementById("camp-rojo"), azul=document.getElementById("camp-azul");
+      if(rojo){ if(d.por_resolver>0){ rojo.textContent=d.por_resolver; rojo.style.display="inline-block"; } else rojo.style.display="none"; }
+      if(azul){ if(d.por_leer>0){ azul.textContent=d.por_leer; azul.style.display="inline-block"; } else azul.style.display="none"; }
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",crearCampanita);
+  else crearCampanita();
+})();
+</script>
+
+</body>
+</html>

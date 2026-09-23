@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Materiales</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}
+  nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}
+  nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .salir:hover{background:rgba(255,255,255,.2)}
+  .contenedor{max-width:1150px;margin:0 auto;padding:28px 24px}
+  .fila-titulo{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:12px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}
+  .sub{color:var(--gris);font-size:14px;margin-bottom:18px}
+  .boton{background:var(--verde);color:#fff;border:none;padding:11px 18px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .boton.sec{background:#fff;color:var(--verde);border:1.5px solid var(--verde-claro)}
+  .filtros{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .filtros input,.filtros select{padding:9px 12px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  .filtros input{flex:1;min-width:200px}
+  .conteo{font-size:13px;color:var(--gris)}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:780px}
+  th{background:#f2f1e8;text-align:left;padding:11px 14px;font-size:11.5px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea);white-space:nowrap;position:sticky;top:0}
+  td{padding:10px 14px;font-size:13px;border-bottom:1px solid #f4f3ec;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  tr.inactivo td:first-child{opacity:.5}
+  .cc-chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;background:#e8efe6;color:var(--verde);font-weight:600;margin:1px 2px 1px 0}
+  .cc-chip.pc{background:#fbf1d9;color:#8a6d1b}
+  .precio{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .accion{background:none;border:1px solid var(--linea);border-radius:7px;padding:6px 11px;font-size:12.5px;cursor:pointer;color:var(--tinta)}
+  .accion:hover{border-color:var(--verde-claro)}
+  .cargando{padding:50px;text-align:center;color:var(--gris)}
+  small.dato{color:var(--gris);font-size:11px}
+  /* modal */
+  .modal-fondo{display:none;position:fixed;inset:0;background:rgba(29,59,42,.5);align-items:flex-start;justify-content:center;padding:24px;z-index:10;overflow:auto}
+  .modal-fondo.abierto{display:flex}
+  .modal{background:var(--crema);border-radius:14px;width:100%;max-width:560px;box-shadow:0 24px 60px rgba(0,0,0,.3);margin:auto}
+  .modal-cab{padding:20px 26px 12px;border-bottom:1px solid var(--linea)}
+  .modal-cab h2{font-size:18px;color:var(--verde-hondo);font-weight:650}
+  .modal-cuerpo{padding:18px 26px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:90px 1fr 1fr;gap:12px}
+  .campo{margin-bottom:13px}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  input,select{width:100%;padding:9px 11px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .ayuda{font-size:11px;color:var(--gris);margin-top:3px}
+  .seccion-tit{font-size:12px;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 9px;padding-bottom:5px;border-bottom:1px solid var(--linea)}
+  .centros-check{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .cc-op{display:flex;align-items:center;gap:7px;font-size:13.5px}
+  .cc-op input{width:auto}
+  .modal-pie{padding:14px 26px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end}
+  .btn-sec{background:none;border:1px solid var(--linea);color:var(--tinta);padding:9px 15px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .aviso{padding:10px 13px;border-radius:8px;font-size:13.5px;margin-bottom:14px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+      <a href="/planificador.html">Planificador</a>
+      <a href="/deberser.html">Deber ser</a>
+      <a href="/jornada.html">Jornada</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/asignacion.html">Asignación</a>
+      <a href="/materiales.html" class="activo">Materiales</a>
+      <a href="/almacen.html">Almacén</a>
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html">Nómina</a>
+      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <div class="fila-titulo">
+      <div><h1>Materiales</h1></div>
+      <div style="display:flex;gap:10px" id="acciones" style="display:none">
+        <button class="boton sec" id="btn-centros" onclick="abrirCentros()" style="display:none">Centros de costo</button>
+        <button class="boton" id="btn-nuevo" onclick="abrirNuevo()" style="display:none">+ Nuevo material</button>
+      </div>
+    </div>
+    <p class="sub">El catálogo de insumos y su clasificación por centro de costo. Un material puede pertenecer a varios centros.</p>
+
+    <div id="nota-permiso" class="nota-permiso" style="display:none">
+      Estás viendo los materiales. El catálogo lo administra almacén (o el administrador).
+    </div>
+
+    <div class="filtros">
+      <input type="text" id="buscar" placeholder="Buscar material…" oninput="pintar()">
+      <select id="filtro-cc" onchange="pintar()"><option value="">Todos los centros</option></select>
+      <span class="conteo" id="conteo"></span>
+    </div>
+
+    <div id="cargando" class="cargando">Cargando…</div>
+    <div class="tabla-caja" id="caja" style="display:none">
+      <table>
+        <thead><tr><th>Cód.</th><th>Material</th><th>Unidad</th><th>Precio</th><th>Centros de costo</th><th></th></tr></thead>
+        <tbody id="cuerpo"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal material -->
+  <div class="modal-fondo" id="modal">
+    <div class="modal">
+      <div class="modal-cab"><h2 id="modal-titulo">Nuevo material</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso" class="aviso"></div>
+        <div class="grid3">
+          <div class="campo"><label>Código</label><input type="text" id="m-codigo"></div>
+          <div class="campo" style="grid-column:span 2"><label>Nombre (con presentación/peso)</label><input type="text" id="m-nombre" placeholder="Ej: Abono KCl x 50kg"></div>
+        </div>
+        <div class="grid2">
+          <div class="campo"><label>Unidad de uso</label><input type="text" id="m-unidad" placeholder="kg, lt, und, m"></div>
+          <div class="campo"><label>Precio unitario ($)</label><input type="number" id="m-precio" step="0.01"></div>
+        </div>
+        <div class="seccion-tit">Presentación (para proyecciones en kilos)</div>
+        <div class="grid3">
+          <div class="campo"><label>Unidad de compra</label><input type="text" id="m-unicompra" placeholder="saco, bulto, galón"></div>
+          <div class="campo"><label>Peso por unidad</label><input type="number" id="m-peso" step="0.01" placeholder="50"></div>
+          <div class="campo"><label>Unidad de peso</label><input type="text" id="m-unipeso" placeholder="kg, lt"></div>
+        </div>
+        <div class="ayuda">Ejemplo: un abono que viene en saco de 50 kg → unidad de compra "saco", peso 50, unidad "kg". Déjalo vacío en materiales que no aplican (una válvula).</div>
+        <div class="seccion-tit">Centros de costo (uno o varios)</div>
+        <div class="centros-check" id="centros-check"></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarModal()">Cancelar</button>
+        <button class="boton" id="btn-guardar" onclick="guardar()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal centros de costo -->
+  <div class="modal-fondo" id="modal-centros">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-cab"><h2>Centros de costo</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-centros" class="aviso"></div>
+        <div id="lista-centros"></div>
+        <div class="seccion-tit">Agregar centro de costo</div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="nuevo-centro" placeholder="Nombre del centro">
+          <button class="boton" onclick="crearCentro()">Agregar</button>
+        </div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarCentros()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let puedeEditar=false, editandoId=null, materiales=[], centros=[];
+
+async function init(){
+  const rme=await fetch("/api/me");
+  if(!rme.ok){ window.location.href="/"; return; }
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  if(me.rol==="administrador") document.getElementById("nav-usuarios").style.display="inline-block";
+    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+  puedeEditar=(me.rol==="administrador"||me.rol==="almacen");
+  if(puedeEditar){
+    document.getElementById("btn-nuevo").style.display="inline-block";
+    if(me.rol==="administrador") document.getElementById("btn-centros").style.display="inline-block";
+  } else {
+    document.getElementById("nota-permiso").style.display="block";
+  }
+  await cargarCentros();
+  await cargar();
+}
+
+async function cargarCentros(){
+  const r=await fetch("/api/centros-costo"); const d=await r.json();
+  centros=d.centros;
+  // filtro
+  const fcc=document.getElementById("filtro-cc");
+  fcc.innerHTML='<option value="">Todos los centros</option>'+centros.map(c=>`<option value="${c.id}">${escapar(c.nombre)}</option>`).join("");
+  // checks del modal
+  const cont=document.getElementById("centros-check");
+  cont.innerHTML=centros.filter(c=>c.activo).map(c=>`<div class="cc-op"><input type="checkbox" id="cc-${c.id}" value="${c.id}"><label for="cc-${c.id}">${escapar(c.nombre)}</label></div>`).join("");
+}
+
+async function cargar(){
+  const r=await fetch("/api/materiales"); const d=await r.json();
+  materiales=d.materiales;
+  document.getElementById("cargando").style.display="none";
+  document.getElementById("caja").style.display="block";
+  pintar();
+}
+
+function pintar(){
+  const q=document.getElementById("buscar").value.toLowerCase().trim();
+  const cc=document.getElementById("filtro-cc").value;
+  const cuerpo=document.getElementById("cuerpo"); cuerpo.innerHTML="";
+  let n=0;
+  materiales.forEach(m=>{
+    if(q && !(m.nombre.toLowerCase().includes(q)||(m.codigo||"").toLowerCase().includes(q))) return;
+    if(cc && !(m.centros||[]).some(c=>String(c.id)===cc)) return;
+    n++;
+    const tr=document.createElement("tr");
+    if(!m.activo) tr.className="inactivo";
+    const chips=(m.centros||[]).map(c=>`<span class="cc-chip ${c.nombre==='Por clasificar'?'pc':''}">${escapar(c.nombre)}</span>`).join("")||'<small class="dato">—</small>';
+    tr.innerHTML=`
+      <td><strong>${m.codigo?escapar(m.codigo):"—"}</strong></td>
+      <td>${escapar(m.nombre)}${m.peso_presentacion?`<br><small class="dato">${m.unidad_compra||""} de ${m.peso_presentacion} ${m.unidad_peso||""}</small>`:""}</td>
+      <td>${m.unidad?escapar(m.unidad):"—"}</td>
+      <td class="precio">${m.precio_unitario!=null?"$"+Number(m.precio_unitario).toLocaleString('es-CO'):"—"}</td>
+      <td>${chips}</td>
+      <td>${puedeEditar?`<button class="accion" onclick='editar(${JSON.stringify(m)})'>Editar</button>`:""}</td>`;
+    cuerpo.appendChild(tr);
+  });
+  document.getElementById("conteo").textContent=`${n} de ${materiales.length} materiales`;
+}
+
+function abrirNuevo(){
+  editandoId=null;
+  document.getElementById("modal-titulo").textContent="Nuevo material";
+  ["m-codigo","m-nombre","m-unidad","m-precio","m-unicompra","m-peso","m-unipeso"].forEach(id=>document.getElementById(id).value="");
+  centros.forEach(c=>{ const el=document.getElementById("cc-"+c.id); if(el)el.checked=false; });
+  document.getElementById("aviso").className="aviso";
+  document.getElementById("modal").classList.add("abierto");
+}
+function editar(m){
+  editandoId=m.id;
+  document.getElementById("modal-titulo").textContent="Editar material";
+  document.getElementById("m-codigo").value=m.codigo||"";
+  document.getElementById("m-nombre").value=m.nombre||"";
+  document.getElementById("m-unidad").value=m.unidad||"";
+  document.getElementById("m-precio").value=m.precio_unitario??"";
+  document.getElementById("m-unicompra").value=m.unidad_compra||"";
+  document.getElementById("m-peso").value=m.peso_presentacion??"";
+  document.getElementById("m-unipeso").value=m.unidad_peso||"";
+  const mset=new Set((m.centros||[]).map(c=>c.id));
+  centros.forEach(c=>{ const el=document.getElementById("cc-"+c.id); if(el)el.checked=mset.has(c.id); });
+  document.getElementById("aviso").className="aviso";
+  document.getElementById("modal").classList.add("abierto");
+}
+function cerrarModal(){ document.getElementById("modal").classList.remove("abierto"); }
+
+async function guardar(){
+  const btn=document.getElementById("btn-guardar"), aviso=document.getElementById("aviso");
+  const nombre=document.getElementById("m-nombre").value.trim();
+  if(!nombre){ aviso.textContent="El nombre es obligatorio."; aviso.className="aviso error"; return; }
+  const cc=centros.filter(c=>{const el=document.getElementById("cc-"+c.id);return el&&el.checked;}).map(c=>c.id);
+  const body={
+    codigo:document.getElementById("m-codigo").value.trim()||null,
+    nombre,
+    unidad:document.getElementById("m-unidad").value.trim()||null,
+    precio_unitario:document.getElementById("m-precio").value?parseFloat(document.getElementById("m-precio").value):null,
+    unidad_compra:document.getElementById("m-unicompra").value.trim()||null,
+    peso_presentacion:document.getElementById("m-peso").value?parseFloat(document.getElementById("m-peso").value):null,
+    unidad_peso:document.getElementById("m-unipeso").value.trim()||null,
+    centros:cc
+  };
+  btn.disabled=true;
+  const url=editandoId?`/api/materiales/${editandoId}`:"/api/materiales";
+  const method=editandoId?"PUT":"POST";
+  const r=await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json(); btn.disabled=false;
+  if(!r.ok){ aviso.textContent=d.error||"No se pudo guardar."; aviso.className="aviso error"; return; }
+  cerrarModal(); await cargar();
+}
+
+/* centros de costo */
+function abrirCentros(){ pintarCentros(); document.getElementById("modal-centros").classList.add("abierto"); }
+function cerrarCentros(){ document.getElementById("modal-centros").classList.remove("abierto"); }
+function pintarCentros(){
+  const cont=document.getElementById("lista-centros");
+  cont.innerHTML=centros.map(c=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0efe6">
+      <input type="text" value="${escapar(c.nombre)}" id="cn-${c.id}" style="flex:1">
+      <button class="accion" onclick="guardarCentro(${c.id})">Guardar</button>
+    </div>`).join("");
+}
+async function crearCentro(){
+  const aviso=document.getElementById("aviso-centros");
+  const nombre=document.getElementById("nuevo-centro").value.trim();
+  if(!nombre){ aviso.textContent="Escribe el nombre."; aviso.className="aviso error"; return; }
+  const r=await fetch("/api/centros-costo",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre})});
+  const d=await r.json();
+  if(!r.ok){ aviso.textContent=d.error||"No se pudo crear."; aviso.className="aviso error"; return; }
+  document.getElementById("nuevo-centro").value="";
+  await cargarCentros(); pintarCentros();
+}
+async function guardarCentro(id){
+  const nombre=document.getElementById("cn-"+id).value.trim();
+  const r=await fetch(`/api/centros-costo/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre,activo:1})});
+  if(r.ok){ await cargarCentros(); pintar(); }
+}
+
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+init();
+</script>
+<script>
+// Campanita de pendientes (inyectada en todas las paginas)
+(function(){
+  function crearCampanita(){
+    const nav=document.querySelector("header nav");
+    if(!nav) return;
+    const a=document.createElement("a");
+    a.href="/pendientes.html";
+    a.title="Centro de pendientes";
+    a.style.cssText="position:relative;display:inline-flex;align-items:center;gap:4px";
+    a.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="camp-rojo" style="display:none;background:#a4443a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span><span id="camp-azul" style="display:none;background:#2c5866;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span>';
+    nav.appendChild(a);
+    actualizarCampanita();
+    setInterval(actualizarCampanita, 60000); // refresca cada minuto
+  }
+  async function actualizarCampanita(){
+    try{
+      const r=await fetch("/api/pendientes/contadores");
+      if(!r.ok) return;
+      const d=await r.json();
+      const rojo=document.getElementById("camp-rojo"), azul=document.getElementById("camp-azul");
+      if(rojo){ if(d.por_resolver>0){ rojo.textContent=d.por_resolver; rojo.style.display="inline-block"; } else rojo.style.display="none"; }
+      if(azul){ if(d.por_leer>0){ azul.textContent=d.por_leer; azul.style.display="inline-block"; } else azul.style.display="none"; }
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",crearCampanita);
+  else crearCampanita();
+})();
+</script>
+
+</body>
+</html>

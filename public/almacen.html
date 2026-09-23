@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Almacén</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;--ambar:#8a6d1b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}
+  nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}
+  nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .contenedor{max-width:1100px;margin:0 auto;padding:28px 24px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}
+  .sub{color:var(--gris);font-size:14px;margin-bottom:18px}
+  .tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--linea)}
+  .tab{padding:10px 18px;border:none;background:none;font-size:14px;font-weight:600;color:var(--gris);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+  .tab.activa{color:var(--verde-hondo);border-bottom-color:var(--verde)}
+  .panel{display:none}.panel.activo{display:block}
+  .barra{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .barra input,.barra select{padding:9px 12px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  .barra input.buscar{flex:1;min-width:200px}
+  .boton{background:var(--verde);color:#fff;border:none;padding:10px 16px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .boton.sec{background:#fff;color:var(--verde);border:1.5px solid var(--verde-claro)}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:640px}
+  th{background:#f2f1e8;text-align:left;padding:11px 14px;font-size:11.5px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea);white-space:nowrap}
+  td{padding:10px 14px;font-size:13px;border-bottom:1px solid #f4f3ec}
+  tr:last-child td{border-bottom:none}
+  .num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .existencia{font-weight:700}
+  .existencia.cero{color:var(--gris);font-weight:400}
+  .bajo-stock{color:var(--error);font-weight:600;font-size:11px}
+  .accion{background:none;border:1px solid var(--linea);border-radius:7px;padding:6px 10px;font-size:12.5px;cursor:pointer;color:var(--tinta);margin-right:4px}
+  .accion:hover{border-color:var(--verde-claro)}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+  small.dato{color:var(--gris);font-size:11px}
+  .alerta-banner{background:#f6e6e4;border:1px solid #e6c9c5;color:var(--error);padding:11px 15px;border-radius:9px;font-size:13.5px;margin-bottom:16px;display:none}
+  .alerta-banner.ver{display:block}
+  /* modales */
+  .modal-fondo{display:none;position:fixed;inset:0;background:rgba(29,59,42,.5);align-items:flex-start;justify-content:center;padding:24px;z-index:10;overflow:auto}
+  .modal-fondo.abierto{display:flex}
+  .modal{background:var(--crema);border-radius:14px;width:100%;max-width:500px;box-shadow:0 24px 60px rgba(0,0,0,.3);margin:auto}
+  .modal-cab{padding:20px 26px 12px;border-bottom:1px solid var(--linea)}
+  .modal-cab h2{font-size:18px;color:var(--verde-hondo);font-weight:650}
+  .modal-cuerpo{padding:18px 26px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .campo{margin-bottom:13px}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  input,select{width:100%;padding:9px 11px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .verif-caja{background:#fbf6e5;border:1px solid #ecdfae;border-radius:9px;padding:12px 14px;margin:12px 0;font-size:13px}
+  .verif-caja .exist{font-size:16px;font-weight:700;color:var(--verde-hondo)}
+  .modal-pie{padding:14px 26px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end}
+  .btn-sec{background:none;border:1px solid var(--linea);color:var(--tinta);padding:9px 15px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .aviso{padding:10px 13px;border-radius:8px;font-size:13.5px;margin-bottom:14px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+  .aviso.warn{background:#fbf6e5;color:var(--ambar);border:1px solid #ecdfae;display:block}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+  .capa-row{font-size:12.5px;padding:5px 0;border-bottom:1px solid #f0efe6;display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+      <a href="/planificador.html">Planificador</a>
+      <a href="/deberser.html">Deber ser</a>
+      <a href="/jornada.html">Jornada</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/asignacion.html">Asignación</a>
+      <a href="/materiales.html">Materiales</a>
+      <a href="/almacen.html" class="activo">Almacén</a>
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html">Nómina</a>
+      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <h1>Almacén</h1>
+    <p class="sub">Existencias, entradas de material y proveedores. Las salidas vienen en el siguiente paso.</p>
+
+    <div id="nota-permiso" class="nota-permiso" style="display:none">
+      Estás viendo el almacén. Registrar entradas lo hace almacén (o el administrador).
+    </div>
+    <div id="alerta-banner" class="alerta-banner"></div>
+
+    <div class="tabs">
+      <button class="tab activa" data-p="inventario" onclick="verTab('inventario')">Inventario</button>
+      <button class="tab" data-p="entradas" onclick="verTab('entradas')">Entradas</button>
+      <button class="tab" data-p="salidas" onclick="verTab('salidas')">Salidas</button>
+      <button class="tab" data-p="devoluciones" onclick="verTab('devoluciones')">Devoluciones</button>
+      <button class="tab" data-p="cruce" onclick="verTab('cruce')">Cruce</button>
+      <button class="tab" data-p="proveedores" onclick="verTab('proveedores')">Proveedores</button>
+    </div>
+
+    <!-- PANEL INVENTARIO -->
+    <div class="panel activo" id="p-inventario">
+      <div class="barra">
+        <input type="text" class="buscar" id="buscar" placeholder="Buscar material…" oninput="pintarInv()">
+      </div>
+      <div id="cargando-inv" class="cargando">Cargando…</div>
+      <div class="tabla-caja" id="caja-inv" style="display:none">
+        <table>
+          <thead><tr><th>Cód.</th><th>Material</th><th>Existencia</th><th>Unidad</th><th>Precio actual</th><th></th></tr></thead>
+          <tbody id="cuerpo-inv"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL ENTRADAS -->
+    <div class="panel" id="p-entradas">
+      <div class="barra">
+        <div style="color:var(--gris);font-size:13px">Todas las entradas al inventario. Las marcadas DEVOLUCION son material devuelto por trabajadores, no compras.</div>
+        <button class="boton" id="btn-entrada" onclick="abrirEntrada()" style="display:none;margin-left:auto">+ Registrar entrada</button>
+      </div>
+      <div class="tabla-caja">
+        <table>
+          <thead><tr><th>Fecha</th><th>Material</th><th>Cant.</th><th>Precio</th><th>Factura</th><th>Proveedor</th><th>Tipo</th></tr></thead>
+          <tbody id="cuerpo-entradas"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL DEVOLUCIONES -->
+    <div class="panel" id="p-devoluciones">
+      <div class="barra">
+        <div style="color:var(--gris);font-size:13px">Material no usado que vuelve al inventario. Puedes registrarla aqu&iacute; o con el bot&oacute;n "Devolver" en la pesta&ntilde;a Salidas.</div>
+        <button class="boton" id="btn-dev" onclick="abrirDevLibre()" style="display:none;margin-left:auto">+ Registrar devoluci&oacute;n</button>
+      </div>
+      <div class="tabla-caja">
+        <table>
+          <thead><tr><th>Fecha</th><th>Material</th><th>Cant.</th><th>Trabajador</th><th>Salida</th><th>Precio</th><th>Nota</th></tr></thead>
+          <tbody id="cuerpo-devoluciones"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL CRUCE -->
+    <div class="panel" id="p-cruce">
+      <div class="barra"><div style="color:var(--gris);font-size:13px">Validaci&oacute;n de material contra actividad de campo. Las alertas tambi&eacute;n llegan al centro de pendientes.</div></div>
+      <h2 style="font-size:16px;color:var(--verde-hondo);margin:6px 0 10px">Embolse vs. bolsas (semana en curso)</h2>
+      <div id="cruce-embolse" class="tabla-caja" style="padding:16px 18px;margin-bottom:22px">Cargando&hellip;</div>
+      <h2 style="font-size:16px;color:var(--verde-hondo);margin:6px 0 10px">Salidas sin actividad asociada</h2>
+      <div class="tabla-caja">
+        <table>
+          <thead><tr><th>Fecha</th><th>Material</th><th>Cant.</th><th>Trabajador</th><th>Lote</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="cuerpo-cruce"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL PROVEEDORES -->
+    <div class="panel" id="p-proveedores">
+      <div class="barra">
+        <input type="text" class="buscar" id="buscar-prov" placeholder="Buscar por nombre, código o NIT…" oninput="pintarProv()">
+        <button class="boton" id="btn-prov" onclick="abrirProv()" style="display:none">+ Nuevo proveedor</button>
+      </div>
+      <div class="tabla-caja" id="caja-prov" style="display:none">
+        <table>
+          <thead><tr><th>Código</th><th>Proveedor</th><th>NIT</th><th></th></tr></thead>
+          <tbody id="cuerpo-prov"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL SALIDAS -->
+    <div class="panel" id="p-salidas">
+      <div class="barra">
+        <div class="info-dia" style="color:var(--gris);font-size:13px">Entregas de material a trabajadores (descuento por capas, PEPS).</div>
+        <button class="boton" id="btn-salida" onclick="abrirSalida()" style="display:none;margin-left:auto">+ Registrar salida</button>
+      </div>
+      <div class="tabla-caja" id="caja-salidas">
+        <table>
+          <thead><tr><th>Fecha</th><th>Material</th><th>Cant.</th><th>Trabajador</th><th>Centro costo</th><th>Costo</th><th></th></tr></thead>
+          <tbody id="cuerpo-salidas"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal salida -->
+  <div class="modal-fondo" id="modal-salida">
+    <div class="modal">
+      <div class="modal-cab"><h2>Registrar salida de material</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-salida" class="aviso"></div>
+        <div class="campo">
+          <label>Material o herramienta</label>
+          <select id="s-material" onchange="alElegirMaterialSalida()"></select>
+        </div>
+        <div class="verif-caja" id="s-exist-caja" style="display:none">
+          Inventario en el sistema: <span class="exist" id="s-existencia">0</span>
+          <div id="s-exist-msg" style="font-size:12.5px;margin-top:6px"></div>
+        </div>
+        <div class="grid2">
+          <div class="campo"><label>Cantidad a entregar</label><input type="number" step="0.01" id="s-cantidad" oninput="chequearCantidadSalida()"></div>
+          <div class="campo"><label>Fecha</label><input type="date" id="s-fecha"></div>
+        </div>
+        <div class="campo">
+          <label>Trabajador que recibe</label>
+          <select id="s-trabajador"></select>
+        </div>
+        <div class="campo" id="s-centro-cont">
+          <label>Centro de costo</label>
+          <select id="s-centro"></select>
+        </div>
+        <div class="campo"><label>Nota (opcional)</label><input type="text" id="s-nota"></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarSalida()">Cancelar</button>
+        <button class="boton" id="btn-guardar-salida" onclick="guardarSalida()">Registrar salida</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal entrada -->
+  <div class="modal-fondo" id="modal-entrada">
+    <div class="modal">
+      <div class="modal-cab"><h2>Registrar entrada de material</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-entrada" class="aviso"></div>
+        <div class="campo">
+          <label>Material</label>
+          <select id="e-material" onchange="alSeleccionarMaterial()"></select>
+        </div>
+        <!-- verificacion de existencia (aparece si ya hay stock) -->
+        <div class="verif-caja" id="verif-caja" style="display:none">
+          El sistema tiene registrada una existencia de <span class="exist" id="verif-sistema">0</span>.
+          <div class="campo" style="margin-top:8px">
+            <label>¿Cuánto hay físicamente en almacén? (confírmalo antes de ingresar)</label>
+            <input type="number" step="0.01" id="e-fisica" oninput="chequearFisica()">
+          </div>
+          <div id="verif-msg" style="font-size:12.5px"></div>
+        </div>
+        <div class="grid2">
+          <div class="campo"><label>Cantidad que entra</label><input type="number" step="0.01" id="e-cantidad"></div>
+          <div class="campo"><label>Fecha</label><input type="date" id="e-fecha"></div>
+        </div>
+        <div class="grid2">
+          <div class="campo"><label>Precio unitario ($)</label><input type="number" step="0.01" id="e-precio"></div>
+          <div class="campo"><label>N° factura</label><input type="text" id="e-factura"></div>
+        </div>
+        <div class="campo"><label>Proveedor</label><select id="e-proveedor"></select></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarEntrada()">Cancelar</button>
+        <button class="boton" id="btn-guardar-entrada" onclick="guardarEntrada()">Registrar entrada</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal proveedor -->
+  <div class="modal-fondo" id="modal-prov">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-cab"><h2 id="prov-titulo">Nuevo proveedor</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-prov" class="aviso"></div>
+        <div class="campo"><label>Nombre</label><input type="text" id="pr-nombre"></div>
+        <div class="grid2">
+          <div class="campo"><label>Código</label><input type="text" id="pr-codigo"></div>
+          <div class="campo"><label>NIT</label><input type="text" id="pr-nit"></div>
+        </div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarProv()">Cancelar</button>
+        <button class="boton" id="btn-guardar-prov" onclick="guardarProv()">Guardar</button>
+      </div>
+    </div>
+  </div>
+  <!-- Modal devolucion -->
+  <div class="modal-fondo" id="modal-dev">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-cab"><h2>Registrar devoluci&oacute;n</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-dev" class="aviso"></div>
+        <div class="campo" id="d-salida-cont" style="display:none">
+          <label>Salida (con pendiente)</label>
+          <select id="d-salida" onchange="alElegirSalidaDev()"></select>
+        </div>
+        <div class="campo"><label>Salida</label><input type="text" id="d-info" disabled></div>
+        <div class="verif-caja">Pendiente por devolver: <span class="exist" id="d-pendiente">0</span></div>
+        <div class="grid2">
+          <div class="campo"><label>Cantidad que devuelve</label><input type="number" step="0.01" id="d-cantidad"></div>
+          <div class="campo"><label>Fecha</label><input type="date" id="d-fecha"></div>
+        </div>
+        <div class="campo"><label>Nota (opcional)</label><input type="text" id="d-nota"></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarDev()">Cancelar</button>
+        <button class="boton" onclick="guardarDev()">Registrar devoluci&oacute;n</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let puedeEditar=false, esVerificador=false, inventario=[], proveedores=[], editProvId=null;
+let trabajadoresSal=[], centrosSal=[], salidas=[];
+
+async function init(){
+  const rme=await fetch("/api/me");
+  if(!rme.ok){ window.location.href="/"; return; }
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  if(me.rol==="administrador") document.getElementById("nav-usuarios").style.display="inline-block";
+    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+  puedeEditar=(me.rol==="administrador"||me.rol==="almacen");
+  esVerificador=(me.rol==="administrador"||me.rol==="rrhh"||me.rol==="revisora_fiscal");
+  if(puedeEditar){
+    document.getElementById("btn-entrada").style.display="inline-block";
+    document.getElementById("btn-dev").style.display="inline-block";
+    document.getElementById("btn-prov").style.display="inline-block";
+    document.getElementById("btn-salida").style.display="inline-block";
+  } else {
+    document.getElementById("nota-permiso").style.display="block";
+  }
+  await cargarProveedores();
+  await cargarInventario();
+  await cargarAuxSalida();
+  if(esVerificador) await cargarAlertas();
+}
+
+async function cargarAuxSalida(){
+  try{ const rt=await fetch("/api/trabajadores"); if(rt.ok){ const d=await rt.json(); trabajadoresSal=d.trabajadores.filter(t=>t.activo); } }catch(e){}
+  try{ const rc=await fetch("/api/centros-costo"); if(rc.ok){ const d=await rc.json(); centrosSal=d.centros.filter(c=>c.activo); } }catch(e){}
+}
+
+function verTab(p){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("activa",t.dataset.p===p));
+  document.querySelectorAll(".panel").forEach(pl=>pl.classList.remove("activo"));
+  document.getElementById("p-"+p).classList.add("activo");
+  if(p==="proveedores"){ document.getElementById("caja-prov").style.display="block"; pintarProv(); }
+  if(p==="salidas"){ cargarSalidas(); }
+  if(p==="entradas"){ cargarEntradas(); }
+  if(p==="devoluciones"){ cargarDevoluciones(); }
+  if(p==="cruce"){ cargarCruce(); }
+}
+
+async function cargarInventario(){
+  const r=await fetch("/api/inventario"); const d=await r.json();
+  inventario=d.inventario;
+  document.getElementById("cargando-inv").style.display="none";
+  document.getElementById("caja-inv").style.display="block";
+  pintarInv();
+}
+function pintarInv(){
+  const q=document.getElementById("buscar").value.toLowerCase().trim();
+  const tb=document.getElementById("cuerpo-inv"); tb.innerHTML="";
+  inventario.forEach(m=>{
+    if(q && !(m.nombre.toLowerCase().includes(q)||(m.codigo||"").toLowerCase().includes(q))) return;
+    const ex=Number(m.existencia)||0;
+    const bajo = (m.stock_minimo!=null && ex<=m.stock_minimo);
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td><strong>${m.codigo?escapar(m.codigo):"—"}</strong></td>
+      <td>${escapar(m.nombre)}</td>
+      <td class="num"><span class="existencia ${ex===0?'cero':''}">${ex.toLocaleString('es-CO')}</span>${bajo?'<br><span class="bajo-stock">stock bajo</span>':''}</td>
+      <td>${m.unidad?escapar(m.unidad):"—"}</td>
+      <td class="num">${m.precio_unitario!=null?"$"+Number(m.precio_unitario).toLocaleString('es-CO'):"—"}</td>
+      <td><button class="accion" onclick="verCapas(${m.id}, ${JSON.stringify(m.nombre)})">Ver capas</button>
+          <button class="accion" onclick="verPrecios(${m.id}, ${JSON.stringify(m.nombre)})">Precios</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+async function cargarProveedores(){
+  const r=await fetch("/api/proveedores"); const d=await r.json();
+  proveedores=d.proveedores;
+}
+function pintarProv(){
+  const q=document.getElementById("buscar-prov").value.toLowerCase().trim();
+  const tb=document.getElementById("cuerpo-prov"); tb.innerHTML="";
+  proveedores.forEach(p=>{
+    if(q && !(p.nombre.toLowerCase().includes(q)||(p.codigo||"").toLowerCase().includes(q)||(p.nit||"").toLowerCase().includes(q))) return;
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${p.codigo?escapar(p.codigo):"—"}</td><td>${escapar(p.nombre)}</td><td>${p.nit?escapar(p.nit):"—"}</td>
+      <td>${puedeEditar?`<button class="accion" onclick='editarProv(${JSON.stringify(p)})'>Editar</button>`:""}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+async function cargarAlertas(){
+  const r=await fetch("/api/alertas-inventario"); if(!r.ok) return;
+  const d=await r.json();
+  const pend=d.alertas.filter(a=>!a.resuelta);
+  const banner=document.getElementById("alerta-banner");
+  if(pend.length){
+    banner.classList.add("ver");
+    banner.innerHTML=`⚠ Hay ${pend.length} inconsistencia(s) de inventario reportada(s) que requieren revisión física. `+
+      pend.slice(0,3).map(a=>`<br>• ${escapar(a.material)}: sistema ${a.cantidad_sistema}, físico ${a.cantidad_fisica} (dif. ${a.diferencia})`).join("");
+  }
+}
+
+/* ENTRADA */
+function abrirEntrada(){
+  document.getElementById("aviso-entrada").className="aviso";
+  const selM=document.getElementById("e-material");
+  selM.innerHTML='<option value="">— elige material —</option>'+inventario.map(m=>`<option value="${m.id}">${escapar((m.codigo?m.codigo+" · ":"")+m.nombre)}</option>`).join("");
+  const selP=document.getElementById("e-proveedor");
+  selP.innerHTML='<option value="">— sin proveedor —</option>'+proveedores.filter(p=>p.activo).map(p=>`<option value="${p.id}">${escapar(p.nombre)}</option>`).join("");
+  document.getElementById("e-cantidad").value="";
+  document.getElementById("e-fecha").value=new Date().toISOString().slice(0,10);
+  document.getElementById("e-precio").value="";
+  document.getElementById("e-factura").value="";
+  document.getElementById("e-fisica").value="";
+  document.getElementById("verif-caja").style.display="none";
+  document.getElementById("verif-msg").textContent="";
+  document.getElementById("modal-entrada").classList.add("abierto");
+}
+function alSeleccionarMaterial(){
+  const id=parseInt(document.getElementById("e-material").value,10);
+  const m=inventario.find(x=>x.id===id);
+  const caja=document.getElementById("verif-caja");
+  if(m && Number(m.existencia)>0){
+    document.getElementById("verif-sistema").textContent=Number(m.existencia).toLocaleString('es-CO')+" "+(m.unidad||"");
+    caja.style.display="block";
+    caja.dataset.sistema=m.existencia;
+  } else {
+    caja.style.display="none";
+  }
+}
+function chequearFisica(){
+  const sistema=parseFloat(document.getElementById("verif-caja").dataset.sistema||"0");
+  const fisica=parseFloat(document.getElementById("e-fisica").value);
+  const msg=document.getElementById("verif-msg");
+  if(isNaN(fisica)){ msg.textContent=""; return; }
+  if(fisica!==sistema){
+    msg.innerHTML=`<span style="color:var(--error);font-weight:600">No coincide (diferencia ${(fisica-sistema).toLocaleString('es-CO')}). Se registrará la entrada pero se avisará a los verificadores.</span>`;
+  } else {
+    msg.innerHTML=`<span style="color:var(--verde);font-weight:600">Coincide ✓</span>`;
+  }
+}
+async function guardarEntrada(){
+  const btn=document.getElementById("btn-guardar-entrada"), aviso=document.getElementById("aviso-entrada");
+  const material_id=parseInt(document.getElementById("e-material").value,10);
+  const cantidad=parseFloat(document.getElementById("e-cantidad").value);
+  const fecha=document.getElementById("e-fecha").value;
+  if(!material_id||!cantidad||!fecha){ aviso.textContent="Elige material, cantidad y fecha."; aviso.className="aviso error"; return; }
+  const caja=document.getElementById("verif-caja");
+  const body={
+    material_id, cantidad, fecha,
+    precio_unitario:document.getElementById("e-precio").value?parseFloat(document.getElementById("e-precio").value):null,
+    factura_nro:document.getElementById("e-factura").value.trim()||null,
+    proveedor_id:document.getElementById("e-proveedor").value?parseInt(document.getElementById("e-proveedor").value,10):null,
+  };
+  if(caja.style.display!=="none" && document.getElementById("e-fisica").value!==""){
+    body.existencia_sistema=parseFloat(caja.dataset.sistema||"0");
+    body.existencia_fisica=parseFloat(document.getElementById("e-fisica").value);
+  }
+  btn.disabled=true;
+  const r=await fetch("/api/entradas",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json(); btn.disabled=false;
+  if(!r.ok){ aviso.textContent=d.error||"No se pudo registrar."; aviso.className="aviso error"; return; }
+  cerrarEntrada();
+  await cargarInventario();
+  if(esVerificador) await cargarAlertas();
+}
+function cerrarEntrada(){ document.getElementById("modal-entrada").classList.remove("abierto"); }
+
+/* PROVEEDOR */
+function abrirProv(){ editProvId=null; document.getElementById("prov-titulo").textContent="Nuevo proveedor";
+  ["pr-nombre","pr-codigo","pr-nit"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("aviso-prov").className="aviso";
+  document.getElementById("modal-prov").classList.add("abierto"); }
+function editarProv(p){ editProvId=p.id; document.getElementById("prov-titulo").textContent="Editar proveedor";
+  document.getElementById("pr-nombre").value=p.nombre||""; document.getElementById("pr-codigo").value=p.codigo||"";
+  document.getElementById("pr-nit").value=p.nit||"";
+  document.getElementById("aviso-prov").className="aviso";
+  document.getElementById("modal-prov").classList.add("abierto"); }
+function cerrarProv(){ document.getElementById("modal-prov").classList.remove("abierto"); }
+async function guardarProv(){
+  const btn=document.getElementById("btn-guardar-prov"), aviso=document.getElementById("aviso-prov");
+  const nombre=document.getElementById("pr-nombre").value.trim();
+  if(!nombre){ aviso.textContent="El nombre es obligatorio."; aviso.className="aviso error"; return; }
+  const body={nombre, codigo:document.getElementById("pr-codigo").value.trim()||null, nit:document.getElementById("pr-nit").value.trim()||null};
+  btn.disabled=true;
+  const url=editProvId?`/api/proveedores/${editProvId}`:"/api/proveedores";
+  const r=await fetch(url,{method:editProvId?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json(); btn.disabled=false;
+  if(!r.ok){ aviso.textContent=d.error||"No se pudo guardar."; aviso.className="aviso error"; return; }
+  cerrarProv(); await cargarProveedores(); pintarProv();
+}
+
+/* CAPAS y PRECIOS (ventanas simples con alert de resumen) */
+async function verCapas(id,nombre){
+  const r=await fetch(`/api/inventario/${id}/capas`); const d=await r.json();
+  let txt=`Capas de ${nombre} (existencia ${Number(d.existencia).toLocaleString('es-CO')}):\n\n`;
+  if(d.capas.length===0) txt+="Sin existencias.";
+  else d.capas.forEach(c=>{ txt+=`${c.fecha}: ${Number(c.cantidad_actual).toLocaleString('es-CO')} (de ${Number(c.cantidad_inicial).toLocaleString('es-CO')}) a $${c.precio_unitario?Number(c.precio_unitario).toLocaleString('es-CO'):"?"}${c.proveedor?" · "+c.proveedor:""}\n`; });
+  alert(txt);
+}
+async function verPrecios(id,nombre){
+  const r=await fetch(`/api/materiales/${id}/precios`); const d=await r.json();
+  let txt=`Historial de precios de ${nombre}:\n\n`;
+  if(d.historial.length===0) txt+="Sin registros de precio todavía.";
+  else d.historial.forEach(h=>{ txt+=`${h.fecha.slice(0,10)}: $${Number(h.precio).toLocaleString('es-CO')} (${h.origen}${h.referencia?" · "+h.referencia:""})\n`; });
+  alert(txt);
+}
+
+/* SALIDAS */
+async function cargarSalidas(){
+  const r=await fetch("/api/salidas"); if(!r.ok) return;
+  const d=await r.json(); salidas=d.salidas;
+  const tb=document.getElementById("cuerpo-salidas"); tb.innerHTML="";
+  if(salidas.length===0){ tb.innerHTML='<tr><td colspan="7" style="color:var(--gris);text-align:center;padding:20px">Sin salidas registradas.</td></tr>'; return; }
+  salidas.forEach(s=>{
+    const tr=document.createElement("tr");
+    const falt = s.faltante>0 ? ` <span style="color:var(--error);font-size:11px">(faltó ${s.faltante})</span>` : "";
+    const dev = Number(s.devuelto||0);
+    const pend = Number(s.cantidad)-dev;
+    const devTxt = dev>0 ? ` <span style="color:var(--ambar);font-size:11px">(devolv. ${dev})</span>` : "";
+    tr.innerHTML=`
+      <td>${s.fecha}</td>
+      <td>${escapar((s.material_codigo?s.material_codigo+" · ":"")+s.material)}</td>
+      <td>${s.cantidad}${falt}${devTxt}</td>
+      <td>${escapar(s.trabajador)}</td>
+      <td>${s.centro_costo?escapar(s.centro_costo):'<small class="dato">—</small>'}</td>
+      <td class="num">${s.costo_total!=null?"$"+Number(s.costo_total).toLocaleString('es-CO'):"—"}</td>
+      <td>${puedeEditar&&pend>0?`<button class="accion" onclick="abrirDev(${s.id})">Devolver</button>`:""}</td>`;
+    tb.appendChild(tr);
+  });
+}
+function abrirSalida(){
+  document.getElementById("aviso-salida").className="aviso";
+  const sm=document.getElementById("s-material");
+  sm.innerHTML='<option value="">— elige material —</option>'+inventario.map(m=>`<option value="${m.id}">${escapar((m.codigo?m.codigo+" · ":"")+m.nombre)}</option>`).join("");
+  const st=document.getElementById("s-trabajador");
+  st.innerHTML='<option value="">— elige trabajador —</option>'+trabajadoresSal.map(t=>`<option value="${t.id}">${escapar(t.nombre)}</option>`).join("");
+  document.getElementById("s-cantidad").value="";
+  document.getElementById("s-fecha").value=new Date().toISOString().slice(0,10);
+  document.getElementById("s-nota").value="";
+  document.getElementById("s-exist-caja").style.display="none";
+  document.getElementById("s-centro-cont").style.display="none";
+  document.getElementById("modal-salida").classList.add("abierto");
+}
+function cerrarSalida(){ document.getElementById("modal-salida").classList.remove("abierto"); }
+
+async function alElegirMaterialSalida(){
+  const id=parseInt(document.getElementById("s-material").value,10);
+  const m=inventario.find(x=>x.id===id);
+  const caja=document.getElementById("s-exist-caja");
+  if(m){
+    document.getElementById("s-existencia").textContent=Number(m.existencia).toLocaleString('es-CO')+" "+(m.unidad||"");
+    caja.style.display="block"; caja.dataset.exist=m.existencia;
+  } else caja.style.display="none";
+  // centros de costo del material
+  const r=await fetch("/api/materiales"); const d=await r.json();
+  const mat=d.materiales.find(x=>x.id===id);
+  const centros=(mat&&mat.centros)?mat.centros:[];
+  const cont=document.getElementById("s-centro-cont");
+  const sel=document.getElementById("s-centro");
+  if(centros.length<=1){
+    // uno solo o ninguno: precargar y ocultar (se manda solo)
+    sel.innerHTML = centros.length===1 ? `<option value="${centros[0].id}" selected>${escapar(centros[0].nombre)}</option>` : '<option value="">—</option>';
+    cont.style.display = centros.length===1 ? "block" : "none";
+    sel.disabled = centros.length===1;
+  } else {
+    // varios: obligar a elegir
+    sel.innerHTML='<option value="">— sin asignar (elige uno) —</option>'+centros.map(c=>`<option value="${c.id}">${escapar(c.nombre)}</option>`).join("");
+    cont.style.display="block"; sel.disabled=false;
+  }
+  chequearCantidadSalida();
+}
+function chequearCantidadSalida(){
+  const caja=document.getElementById("s-exist-caja");
+  if(caja.style.display==="none") return;
+  const exist=parseFloat(caja.dataset.exist||"0");
+  const cant=parseFloat(document.getElementById("s-cantidad").value);
+  const msg=document.getElementById("s-exist-msg");
+  if(isNaN(cant)||cant<=0){ msg.textContent=""; return; }
+  if(cant>exist){
+    msg.innerHTML=`<span style="color:var(--error);font-weight:600">Estás sacando más de lo que hay (${cant-exist} de más). Se registrará y se solicitará auditar el inventario para verificar la diferencia.</span>`;
+  } else msg.innerHTML=`<span style="color:var(--verde)">Hay suficiente inventario.</span>`;
+}
+async function guardarSalida(){
+  const btn=document.getElementById("btn-guardar-salida"), aviso=document.getElementById("aviso-salida");
+  const material_id=parseInt(document.getElementById("s-material").value,10);
+  const trabajador_id=parseInt(document.getElementById("s-trabajador").value,10);
+  const cantidad=parseFloat(document.getElementById("s-cantidad").value);
+  const fecha=document.getElementById("s-fecha").value;
+  const selCentro=document.getElementById("s-centro");
+  if(!material_id){ aviso.textContent="Elige el material."; aviso.className="aviso error"; return; }
+  if(!trabajador_id){ aviso.textContent="Elige el trabajador que recibe."; aviso.className="aviso error"; return; }
+  if(!cantidad||cantidad<=0){ aviso.textContent="Ingresa la cantidad."; aviso.className="aviso error"; return; }
+  if(!fecha){ aviso.textContent="Ingresa la fecha."; aviso.className="aviso error"; return; }
+  // si el select de centro esta visible, activo y sin valor -> obligar
+  if(document.getElementById("s-centro-cont").style.display!=="none" && !selCentro.disabled && !selCentro.value){
+    aviso.textContent="Este material tiene varios centros de costo. Elige uno."; aviso.className="aviso error"; return;
+  }
+  const body={material_id,trabajador_id,cantidad,fecha,
+    centro_costo_id: selCentro.value?parseInt(selCentro.value,10):null,
+    nota:document.getElementById("s-nota").value.trim()||null};
+  btn.disabled=true;
+  const r=await fetch("/api/salidas",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json(); btn.disabled=false;
+  if(!r.ok){ aviso.textContent=d.error||"No se pudo registrar."; aviso.className="aviso error"; return; }
+  cerrarSalida();
+  await cargarInventario();
+  await cargarSalidas();
+  if(esVerificador) await cargarAlertas();
+}
+
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+init();
+let devSalidaId=null;
+async function cargarEntradas(){
+  const r=await fetch("/api/entradas"); if(!r.ok) return;
+  const d=await r.json();
+  const tb=document.getElementById("cuerpo-entradas"); tb.innerHTML="";
+  if(d.entradas.length===0){ tb.innerHTML='<tr><td colspan="7" style="color:var(--gris);text-align:center;padding:20px">Sin entradas registradas.</td></tr>'; return; }
+  d.entradas.forEach(e=>{
+    const marca=e.factura_nro==="DEVOLUCION"||e.factura_nro==="FALTANTE";
+    tb.insertAdjacentHTML("beforeend",`<tr>
+      <td>${e.fecha}</td>
+      <td>${escapar((e.material_codigo?e.material_codigo+" · ":"")+e.material)}</td>
+      <td class="num">${Number(e.cantidad_inicial).toLocaleString('es-CO')} ${e.unidad||""}</td>
+      <td class="num">${e.precio_unitario?"$"+Number(e.precio_unitario).toLocaleString('es-CO'):"—"}</td>
+      <td>${escapar(e.factura_nro||"—")}</td>
+      <td>${escapar(e.proveedor||"—")}</td>
+      <td>${marca?`<span style="color:var(--ambar);font-weight:600;font-size:11px">${e.factura_nro}</span>`:"Compra"}</td>
+    </tr>`);
+  });
+}
+async function cargarDevoluciones(){
+  const r=await fetch("/api/devoluciones"); if(!r.ok) return;
+  const d=await r.json();
+  const tb=document.getElementById("cuerpo-devoluciones"); tb.innerHTML="";
+  if(d.devoluciones.length===0){ tb.innerHTML='<tr><td colspan="7" style="color:var(--gris);text-align:center;padding:20px">Sin devoluciones registradas.</td></tr>'; return; }
+  d.devoluciones.forEach(v=>{
+    tb.insertAdjacentHTML("beforeend",`<tr>
+      <td>${v.fecha}</td>
+      <td>${escapar((v.material_codigo?v.material_codigo+" · ":"")+v.material)}</td>
+      <td class="num">${Number(v.cantidad).toLocaleString('es-CO')} ${v.unidad||""}</td>
+      <td>${escapar(v.trabajador)}</td>
+      <td>#${v.salida_id}</td>
+      <td class="num">${v.precio_unit?"$"+Number(v.precio_unit).toLocaleString('es-CO'):"—"}</td>
+      <td>${escapar(v.nota||"—")}</td>
+    </tr>`);
+  });
+}
+function abrirDev(salidaId){
+  const s=salidas.find(x=>x.id===salidaId); if(!s) return;
+  document.getElementById("d-salida-cont").style.display="none";
+  devSalidaId=salidaId;
+  const pendiente=Number(s.cantidad)-Number(s.devuelto||0);
+  document.getElementById("d-info").value="#"+s.id+" · "+s.material+" → "+s.trabajador;
+  document.getElementById("d-pendiente").textContent=pendiente.toLocaleString('es-CO')+" "+(s.unidad||"");
+  document.getElementById("d-cantidad").value=""; document.getElementById("d-cantidad").max=pendiente;
+  document.getElementById("d-fecha").value=new Date().toISOString().slice(0,10);
+  document.getElementById("d-nota").value="";
+  const av=document.getElementById("aviso-dev"); av.className="aviso"; av.textContent="";
+  document.getElementById("modal-dev").classList.add("abierto");
+}
+function cerrarDev(){ document.getElementById("modal-dev").classList.remove("abierto"); devSalidaId=null; }
+async function abrirDevLibre(){
+  const r=await fetch("/api/salidas"); if(!r.ok) return;
+  const d=await r.json();
+  salidas=d.salidas||[];
+  const pends=salidas.filter(s=>Number(s.cantidad)-Number(s.devuelto||0)>0);
+  if(pends.length===0){ alert("No hay salidas con material pendiente por devolver."); return; }
+  const sel=document.getElementById("d-salida");
+  sel.innerHTML='<option value="">— elige salida —</option>'+pends.map(s=>{
+    const pend=Number(s.cantidad)-Number(s.devuelto||0);
+    return `<option value="${s.id}">#${s.id} · ${escapar(s.material)} → ${escapar(s.trabajador)} (pend. ${pend})</option>`;
+  }).join("");
+  document.getElementById("d-salida-cont").style.display="block";
+  document.getElementById("d-info").value="";
+  document.getElementById("d-pendiente").textContent="—";
+  document.getElementById("d-cantidad").value=""; document.getElementById("d-cantidad").max="";
+  document.getElementById("d-fecha").value=new Date().toISOString().slice(0,10);
+  document.getElementById("d-nota").value="";
+  const av=document.getElementById("aviso-dev"); av.className="aviso"; av.textContent="";
+  devSalidaId=null;
+  document.getElementById("modal-dev").classList.add("abierto");
+}
+function alElegirSalidaDev(){
+  const id=parseInt(document.getElementById("d-salida").value,10);
+  const s=salidas.find(x=>x.id===id);
+  if(!s){ devSalidaId=null; document.getElementById("d-pendiente").textContent="—"; return; }
+  devSalidaId=id;
+  const pendiente=Number(s.cantidad)-Number(s.devuelto||0);
+  document.getElementById("d-info").value="#"+s.id+" · "+s.material+" → "+s.trabajador;
+  document.getElementById("d-pendiente").textContent=pendiente.toLocaleString('es-CO')+" "+(s.unidad||"");
+  document.getElementById("d-cantidad").max=pendiente;
+}
+async function guardarDev(){
+  const cantidad=parseFloat(document.getElementById("d-cantidad").value);
+  const av=document.getElementById("aviso-dev");
+  if(!devSalidaId){ av.className="aviso error"; av.textContent="Elige la salida a la que se devuelve."; return; }
+  if(!cantidad||cantidad<=0){ av.className="aviso error"; av.textContent="Escribe una cantidad mayor a cero."; return; }
+  const r=await fetch("/api/devoluciones",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({salida_id:devSalidaId,cantidad:cantidad,fecha:document.getElementById("d-fecha").value,nota:document.getElementById("d-nota").value||null})});
+  const d=await r.json();
+  if(!r.ok){ av.className="aviso error"; av.textContent=d.error||"Error al registrar."; return; }
+  cerrarDev(); cargarSalidas(); cargarInventario(); cargarDevoluciones();
+}
+async function cargarCruce(){
+  const ce=document.getElementById("cruce-embolse");
+  try{
+    const re=await fetch("/api/cruce/embolse");
+    if(re.ok){
+      const d=await re.json();
+      if(!d.configurado){
+        ce.innerHTML='<div style="font-size:13.5px;color:var(--ambar)">Falta configurar la labor de embolse y el material de bolsas en <a href="/configuracion.html" style="color:var(--verde);font-weight:600">Configuraci&oacute;n</a>.</div>';
+      } else {
+        const badge=d.estado==='alerta'
+          ? '<span style="color:var(--error);font-weight:700">REVISAR: bolsas por encima de lo esperado</span>'
+          : '<span style="color:var(--verde);font-weight:700">OK</span>';
+        ce.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;font-size:13.5px">
+          <div><small class="dato">Semana</small><br><b>${d.semana.inicio} &rarr; ${d.semana.fin}</b></div>
+          <div><small class="dato">Racimos embolsados</small><br><b>${Number(d.racimos||0).toLocaleString('es-CO')}</b></div>
+          <div><small class="dato">Bolsas entregadas</small><br><b>${Number(d.bolsas||0).toLocaleString('es-CO')}</b></div>
+          <div><small class="dato">Esperado (ratio ${d.ratio}:1, tol. ${d.tolerancia}%)</small><br><b>${Number(d.esperado||0).toLocaleString('es-CO')}</b> <small class="dato">l&iacute;mite ${Number(d.limite||0).toLocaleString('es-CO')}</small></div>
+          <div><small class="dato">Estado</small><br>${badge}</div>
+        </div>`;
+      }
+    } else ce.textContent="Error cargando el cruce.";
+  }catch(e){ ce.textContent="Error cargando el cruce."; }
+  const r=await fetch("/api/cruce/salidas"); if(!r.ok) return;
+  const d=await r.json();
+  const tb=document.getElementById("cuerpo-cruce"); tb.innerHTML="";
+  const filas=(d.salidas||[]).filter(s=>s.estado!=='con_actividad');
+  if(filas.length===0){
+    tb.innerHTML='<tr><td colspan="7" style="color:var(--gris);text-align:center;padding:20px">Sin salidas pendientes: todas tienen actividad asociada o est&aacute;n justificadas.</td></tr>';
+    return;
+  }
+  filas.forEach(s=>{
+    const esJus=s.estado==='justificada';
+    tb.insertAdjacentHTML("beforeend",`<tr>
+      <td>${s.fecha}</td>
+      <td>${escapar((s.material_codigo?s.material_codigo+" · ":"")+s.material)}</td>
+      <td class="num">${Number(s.cantidad).toLocaleString('es-CO')} ${s.unidad||""}</td>
+      <td>${escapar(s.trabajador)}</td>
+      <td>${escapar(s.lote||"—")}</td>
+      <td>${esJus?'<span style="color:var(--ambar);font-size:11px;font-weight:700">JUSTIFICADA</span>':'<span style="color:var(--error);font-size:11px;font-weight:700">SIN ACTIVIDAD</span>'}</td>
+      <td>${!esJus&&esVerificador?`<button class="accion" onclick="justificarSalida(${s.id})">Justificar</button>`:""}</td>
+    </tr>`);
+  });
+}
+async function justificarSalida(id){
+  const comentario=prompt("¿Por qué se justifica esta salida sin actividad asociada?");
+  if(!comentario||!comentario.trim()) return;
+  const r=await fetch("/api/cruce/justificar",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({salida_id:id,comentario:comentario.trim()})});
+  if(!r.ok){ const d=await r.json(); alert(d.error||"No se pudo justificar."); return; }
+  cargarCruce();
+}
+</script>
+<script>
+// Campanita de pendientes (inyectada en todas las paginas)
+(function(){
+  function crearCampanita(){
+    const nav=document.querySelector("header nav");
+    if(!nav) return;
+    const a=document.createElement("a");
+    a.href="/pendientes.html";
+    a.title="Centro de pendientes";
+    a.style.cssText="position:relative;display:inline-flex;align-items:center;gap:4px";
+    a.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="camp-rojo" style="display:none;background:#a4443a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span><span id="camp-azul" style="display:none;background:#2c5866;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span>';
+    nav.appendChild(a);
+    actualizarCampanita();
+    setInterval(actualizarCampanita, 60000); // refresca cada minuto
+  }
+  async function actualizarCampanita(){
+    try{
+      const r=await fetch("/api/pendientes/contadores");
+      if(!r.ok) return;
+      const d=await r.json();
+      const rojo=document.getElementById("camp-rojo"), azul=document.getElementById("camp-azul");
+      if(rojo){ if(d.por_resolver>0){ rojo.textContent=d.por_resolver; rojo.style.display="inline-block"; } else rojo.style.display="none"; }
+      if(azul){ if(d.por_leer>0){ azul.textContent=d.por_leer; azul.style.display="inline-block"; } else azul.style.display="none"; }
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",crearCampanita);
+  else crearCampanita();
+})();
+</script>
+
+</body>
+</html>

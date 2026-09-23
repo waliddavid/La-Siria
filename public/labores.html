@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Labores</title>
+<style>
+  :root{
+    --verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;
+    --crema:#f5f3ec;--tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;
+    --linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px;letter-spacing:.02em}
+  nav{display:flex;gap:6px}
+  nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}
+  nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .salir:hover{background:rgba(255,255,255,.2)}
+  .contenedor{max-width:1080px;margin:0 auto;padding:32px 28px}
+  .fila-titulo{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:12px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo);letter-spacing:-.01em}
+  .sub{color:var(--gris);font-size:14px;margin-bottom:22px}
+  .boton{background:var(--verde);color:#fff;border:none;padding:11px 18px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:720px}
+  th{background:#f2f1e8;text-align:left;padding:12px 16px;font-size:12px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea);white-space:nowrap}
+  td{padding:13px 16px;font-size:13.5px;border-bottom:1px solid #f0efe6}
+  tr:last-child td{border-bottom:none}
+  tr.inactiva td{opacity:.5}
+  .chip{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:600;text-transform:capitalize}
+  .chip.mo{background:#e6eef0;color:#2c5866}
+  .chip.mat{background:#efe9dc;color:#8a6d1b}
+  .chip.serv{background:#e9e6ef;color:#5a4d7a}
+  .chip.cat{background:#e8efe6;color:var(--verde)}
+  .si{color:var(--verde);font-weight:600}
+  .no{color:var(--gris)}
+  small.dato{color:var(--gris);font-size:11.5px}
+  .precio-cell{font-variant-numeric:tabular-nums;white-space:nowrap}
+  tr.por-borrar{background:#faf4f3}
+  .accion.borrar{color:var(--error);border-color:#e6c9c5}
+  .accion.borrar:hover{border-color:var(--error)}
+  .cuenta{display:inline-block;font-size:12px;color:var(--error);font-weight:600;margin-right:8px}
+  .accion{background:none;border:1px solid var(--linea);border-radius:7px;padding:6px 11px;font-size:12.5px;cursor:pointer;color:var(--tinta)}
+  .accion:hover{border-color:var(--verde-claro)}
+  .cargando{padding:50px;text-align:center;color:var(--gris)}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;
+    padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+  /* modal */
+  .modal-fondo{display:none;position:fixed;inset:0;background:rgba(29,59,42,.5);align-items:flex-start;justify-content:center;padding:24px;z-index:10;overflow-y:auto}
+  .modal-fondo.abierto{display:flex}
+  .modal{background:var(--crema);border-radius:14px;width:100%;max-width:480px;box-shadow:0 24px 60px rgba(0,0,0,.3);margin:auto}
+  .modal-cab{padding:22px 28px 14px;border-bottom:1px solid var(--linea)}
+  .modal-cab h2{font-size:19px;color:var(--verde-hondo);font-weight:650}
+  .modal-cuerpo{padding:20px 28px}
+  .campo{margin-bottom:15px}
+  .campo-fila{display:flex;gap:12px}
+  .campo-fila .campo{flex:1}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px}
+  input,select{width:100%;padding:10px 12px;border:1.5px solid var(--linea);border-radius:9px;font-size:14px;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .check{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .check input{width:auto}
+  .check label{margin:0;font-weight:500;font-size:13.5px}
+  .modal-pie{padding:16px 28px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end}
+  .btn-sec{background:none;border:1px solid var(--linea);color:var(--tinta);padding:10px 16px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .aviso{padding:10px 13px;border-radius:8px;font-size:13.5px;margin-bottom:14px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav id="nav">
+      <a href="/reporte.html">Reporte</a>
+      <a href="/planificador.html">Planificador</a>
+      <a href="/deberser.html">Deber ser</a>
+      <a href="/jornada.html">Jornada</a>
+      <a href="/labores.html" class="activo">Labores</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/asignacion.html">Asignación</a>
+      <a href="/materiales.html">Materiales</a>
+      <a href="/almacen.html">Almacén</a>
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html">Nómina</a>
+      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <div class="fila-titulo">
+      <div>
+        <h1>Labores</h1>
+      </div>
+      <button class="boton" id="btn-nueva" onclick="abrirModal()" style="display:none">+ Nueva labor</button>
+    </div>
+    <p class="sub">Las actividades de campo de la finca y su clasificación de costo.</p>
+
+    <div id="nota-permiso" class="nota-permiso" style="display:none">
+      Estás viendo las labores. Para crear o modificar una, solicítalo al administrador.
+    </div>
+
+    <div id="cargando" class="cargando">Cargando…</div>
+    <div class="tabla-caja" id="caja" style="display:none">
+      <table>
+        <thead>
+          <tr><th>Cód.</th><th>Labor</th><th>Rendimiento</th><th>Precio/unidad</th><th>Materiales</th><th>Elemento</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody id="cuerpo"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal crear/editar -->
+  <div class="modal-fondo" id="modal">
+    <div class="modal">
+      <div class="modal-cab"><h2 id="modal-titulo">Nueva labor</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso" class="aviso"></div>
+        <div class="campo-fila">
+          <div class="campo" style="flex:0 0 90px">
+            <label for="m-codigo">Código</label>
+            <input type="text" id="m-codigo" placeholder="101">
+          </div>
+          <div class="campo">
+            <label for="m-nombre">Nombre de la labor</label>
+            <input type="text" id="m-nombre">
+          </div>
+        </div>
+        <div class="campo-fila">
+          <div class="campo">
+            <label for="m-elemento">Elemento de costo</label>
+            <select id="m-elemento">
+              <option value="mano_obra">Mano de obra</option>
+              <option value="material">Material</option>
+              <option value="servicios">Servicios</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="m-categoria">Categoría</label>
+            <select id="m-categoria">
+              <option value="agricola">Agrícola (fijo)</option>
+              <option value="variable">Variable</option>
+              <option value="administrativo">Administrativo</option>
+            </select>
+          </div>
+        </div>
+        <div class="campo-fila">
+          <div class="campo">
+            <label for="m-frecuencia">Frecuencia semanal</label>
+            <input type="number" id="m-frecuencia" min="0" step="1" placeholder="veces/semana">
+          </div>
+          <div class="campo">
+            <label for="m-rendimiento">Rendimiento estándar</label>
+            <input type="number" id="m-rendimiento" step="0.01" placeholder="tarea diaria">
+          </div>
+        </div>
+        <div class="campo">
+          <label for="m-unidad">Unidad del rendimiento</label>
+          <input type="text" id="m-unidad" placeholder="Ej: PLANTAS/HORA, METROS/HORA, HTAS/HORA">
+        </div>
+        <div class="campo">
+          <label for="m-precio">Precio por unidad (tarifa de destajo)</label>
+          <input type="number" id="m-precio" step="0.01" placeholder="$ por cada unidad de labor">
+          <div style="font-size:11.5px;color:var(--gris);margin-top:4px">Lo que se paga por cada unidad hecha (ej. por embolse, por caja). Se usa para el pago por cantidades.</div>
+        </div>
+        <div class="check"><input type="checkbox" id="m-riego" checked><label for="m-riego">Compatible con riego</label></div>
+        <div class="check"><input type="checkbox" id="m-sabado"><label for="m-sabado">Se hace en media jornada de sábado</label></div>
+        <div class="check"><input type="checkbox" id="m-regular"><label for="m-regular">Labor regular (entra en "Proponer semana" del planificador)</label></div>
+        <div class="check" id="check-activo-cont" style="display:none"><input type="checkbox" id="m-activo" checked><label for="m-activo">Labor activa</label></div>
+        <div style="font-size:12px;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 9px;padding-bottom:5px;border-bottom:1px solid var(--linea)">Materiales y herramientas que usa</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input type="text" id="m-buscar-mat" placeholder="Buscar material para agregar…" oninput="filtrarMats()" style="flex:1;padding:9px 11px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px">
+        </div>
+        <div id="m-lista-mats" style="max-height:150px;overflow:auto;border:1px solid var(--linea);border-radius:8px;margin-bottom:10px;display:none"></div>
+        <div id="m-mats-elegidos" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        <div style="font-size:11px;color:var(--gris);margin-top:6px">Agrega los materiales/herramientas típicos de esta labor. Sirve para avisar si alguien saca del almacén algo que no corresponde. Puedes dejarlo vacío y definirlo después.</div>
+        <div id="seccion-personas" style="display:none">
+          <div style="font-size:12px;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 9px;padding-bottom:5px;border-bottom:1px solid var(--linea)">Personas que hacen esta labor</div>
+          <div id="p-buscar-cont" style="display:flex;gap:8px;margin-bottom:10px">
+            <input type="text" id="p-buscar" placeholder="Buscar trabajador para agregar…" oninput="filtrarPersonas()" style="flex:1;padding:9px 11px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px">
+          </div>
+          <div id="p-lista" style="max-height:150px;overflow:auto;border:1px solid var(--linea);border-radius:8px;margin-bottom:10px;display:none"></div>
+          <div id="p-elegidos" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+          <div style="font-size:11px;color:var(--gris);margin-top:6px">Agregar o quitar personas aquí modifica las habilidades de cada trabajador. Lo pueden hacer el administrador y recursos humanos.</div>
+        </div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarModal()">Cancelar</button>
+        <button class="boton" id="btn-guardar" onclick="guardar()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal VER (solo lectura) -->
+  <div class="modal-fondo" id="modal-ver">
+    <div class="modal">
+      <div class="modal-cab"><h2 id="ver-titulo">Detalle de la labor</h2></div>
+      <div class="modal-cuerpo" id="ver-cuerpo" style="font-size:14px"></div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarVer()">Cerrar</button>
+        <button class="boton" id="ver-editar" onclick="editarDesdeVer()" style="display:none">Editar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal confirmar borrado con clave -->
+  <div class="modal-fondo" id="modal-borrar">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-cab"><h2>Borrar labor</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-borrar" class="aviso"></div>
+        <p style="font-size:14px;margin-bottom:14px">Vas a borrar <strong id="borrar-nombre"></strong>. La labor quedará en período de gracia de <strong>7 días</strong>; durante ese tiempo podrás cancelar el borrado. Pasados los 7 días, se elimina definitivamente.</p>
+        <div class="campo">
+          <label for="borrar-clave">Escribe tu contraseña para confirmar</label>
+          <input type="password" id="borrar-clave" autocomplete="current-password">
+        </div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarBorrar()">Cancelar</button>
+        <button class="boton" style="background:var(--error)" id="btn-confirmar-borrar" onclick="confirmarBorrado()">Confirmar borrado</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let esAdmin = false;
+let puedeEditarPersonas = false;  // admin o rrhh
+let todosMateriales = [];      // catalogo para el buscador
+let todosTrabajadores = [];    // catalogo de trabajadores para agregar personas
+let matsElegidos = [];         // [{id,codigo,nombre}] de la labor en edicion
+let personasLabor = [];        // [{id,nombre,cedula}] personas de la labor en edicion
+let editandoId = null;
+
+async function init(){
+  const rme = await fetch("/api/me");
+  if(!rme.ok){ window.location.href = "/"; return; }
+  const me = await rme.json();
+  document.getElementById("quien").textContent = me.nombre + " · " + me.rol;
+  esAdmin = (me.rol === "administrador");
+  puedeEditarPersonas = (me.rol === "administrador" || me.rol === "rrhh");
+  if(esAdmin){
+    document.getElementById("btn-nueva").style.display = "inline-block";
+    document.getElementById("nav-usuarios").style.display = "inline-block";
+    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+  } else {
+    document.getElementById("nota-permiso").style.display = "block";
+  }
+  await cargarMateriales();
+  await cargarTrabajadores();
+  await cargar();
+}
+
+async function cargarTrabajadores(){
+  try{ const r=await fetch("/api/trabajadores"); if(r.ok){ const d=await r.json(); todosTrabajadores=d.trabajadores.filter(t=>t.activo); } }catch(e){}
+}
+
+async function cargarMateriales(){
+  try{ const r=await fetch("/api/materiales"); if(r.ok){ const d=await r.json(); todosMateriales=d.materiales.filter(m=>m.activo); } }catch(e){}
+}
+
+async function cargar(){
+  const r = await fetch("/api/labores");
+  const d = await r.json();
+  const cuerpo = document.getElementById("cuerpo");
+  cuerpo.innerHTML = "";
+  d.labores.forEach(l=>{
+    const tr = document.createElement("tr");
+    if(!l.activo) tr.className = "inactiva";
+    if(l.borrado_pendiente) tr.className = "por-borrar";
+    const elem = {mano_obra:["Mano de obra","mo"],material:["Material","mat"],servicios:["Servicios","serv"]}[l.elemento_costo] || ["—",""];
+    const rend = l.rendimiento_estandar!=null
+      ? `${l.rendimiento_estandar} <small class="dato">${l.unidad_rendimiento?escapar(l.unidad_rendimiento.toLowerCase()):""}</small>`
+      : '<small class="dato">sin medir</small>';
+    // acciones: Ver (todos) + editar/borrar (admin)
+    let acciones = `<button class="accion" onclick='verLabor(${JSON.stringify(l)})'>Ver</button>`;
+    if(esAdmin){
+      if(l.borrado_pendiente){
+        acciones += `<span class="cuenta">se borra en ${diasRestantes(l.borrado_programado_para)}</span>
+          <button class="accion" onclick="cancelarBorrado(${l.id})">Cancelar borrado</button>`;
+      } else {
+        acciones += `<button class="accion" onclick='editar(${JSON.stringify(l)})'>Editar</button>
+          <button class="accion borrar" onclick='pedirBorrado(${l.id}, ${JSON.stringify(l.nombre)})'>Borrar</button>`;
+      }
+    }
+    tr.innerHTML = `
+      <td><strong>${l.codigo?escapar(l.codigo):"—"}</strong></td>
+      <td>${escapar(l.nombre)}</td>
+      <td>${rend}</td>
+      <td class="precio-cell">${l.precio_unidad!=null?"$"+Number(l.precio_unidad).toLocaleString('es-CO'):'<small class="dato">—</small>'}</td>
+      <td>${(l.materiales&&l.materiales.length)?`<span class="chip cat">${l.materiales.length}</span>`:'<small class="dato">—</small>'}</td>
+      <td>${l.elemento_costo?`<span class="chip ${elem[1]}">${elem[0]}</span>`:"—"}</td>
+      <td>${l.borrado_pendiente?'<span class="no">Por borrar</span>':(l.activo?'<span class="si">Activa</span>':'<span class="no">Inactiva</span>')}</td>
+      <td>${acciones}</td>
+    `;
+    cuerpo.appendChild(tr);
+  });
+  document.getElementById("cargando").style.display = "none";
+  document.getElementById("caja").style.display = "block";
+}
+
+function abrirModal(){
+  editandoId = null;
+  document.getElementById("modal-titulo").textContent = "Nueva labor";
+  document.getElementById("m-nombre").value = "";
+  document.getElementById("m-codigo").value = "";
+  document.getElementById("m-unidad").value = "";
+  matsElegidos = [];
+  pintarMatsElegidos();
+  document.getElementById("m-buscar-mat").value = "";
+  document.getElementById("m-lista-mats").style.display = "none";
+  document.getElementById("m-precio").value = "";
+  document.getElementById("m-elemento").value = "mano_obra";
+  document.getElementById("m-categoria").value = "agricola";
+  document.getElementById("m-frecuencia").value = "1";
+  document.getElementById("m-rendimiento").value = "";
+  document.getElementById("m-riego").checked = true;
+  document.getElementById("m-sabado").checked = false;
+  document.getElementById("m-regular").checked = false;
+  document.getElementById("check-activo-cont").style.display = "none";
+  document.getElementById("seccion-personas").style.display = "none"; // solo al editar (necesita id)
+  document.getElementById("aviso").className = "aviso";
+  document.getElementById("modal").classList.add("abierto");
+}
+
+function editar(l){
+  editandoId = l.id;
+  document.getElementById("modal-titulo").textContent = "Editar labor";
+  document.getElementById("m-nombre").value = l.nombre || "";
+  document.getElementById("m-codigo").value = l.codigo || "";
+  document.getElementById("m-unidad").value = l.unidad_rendimiento || "";
+  matsElegidos = (l.materiales || []).slice();
+  pintarMatsElegidos();
+  document.getElementById("m-buscar-mat").value = "";
+  document.getElementById("m-lista-mats").style.display = "none";
+  document.getElementById("m-precio").value = l.precio_unidad ?? "";
+  document.getElementById("m-elemento").value = l.elemento_costo || "mano_obra";
+  document.getElementById("m-categoria").value = l.categoria_costo || "agricola";
+  document.getElementById("m-frecuencia").value = l.frecuencia_semanal ?? "";
+  document.getElementById("m-rendimiento").value = l.rendimiento_estandar ?? "";
+  document.getElementById("m-riego").checked = !!l.compatible_riego;
+  document.getElementById("m-sabado").checked = !!l.media_jornada_sabado;
+  document.getElementById("m-regular").checked = !!l.es_regular;
+  document.getElementById("m-activo").checked = !!l.activo;
+  document.getElementById("check-activo-cont").style.display = "flex";
+  document.getElementById("aviso").className = "aviso";
+  // seccion personas: visible al editar, editable solo admin/rrhh
+  document.getElementById("seccion-personas").style.display = "block";
+  document.getElementById("p-buscar-cont").style.display = puedeEditarPersonas ? "flex" : "none";
+  cargarPersonas(l.id);
+  document.getElementById("modal").classList.add("abierto");
+}
+
+async function cargarPersonas(laborId){
+  personasLabor = [];
+  document.getElementById("p-buscar").value = "";
+  document.getElementById("p-lista").style.display = "none";
+  const r = await fetch(`/api/labores/${laborId}/personas`);
+  if(r.ok){ const d = await r.json(); personasLabor = d.personas; }
+  pintarPersonas();
+}
+function pintarPersonas(){
+  const cont = document.getElementById("p-elegidos");
+  if(personasLabor.length === 0){ cont.innerHTML = '<small class="dato">Nadie asignado todavía</small>'; return; }
+  cont.innerHTML = personasLabor.map(p=>{
+    const x = puedeEditarPersonas ? `<span style="cursor:pointer;color:var(--error)" onclick="quitarPersona(${p.id})">✕</span>` : "";
+    return `<span style="display:inline-flex;align-items:center;gap:6px;background:#e8efe6;color:var(--verde);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">${escapar(p.nombre)} ${x}</span>`;
+  }).join("");
+}
+function filtrarPersonas(){
+  const q = document.getElementById("p-buscar").value.toLowerCase().trim();
+  const cont = document.getElementById("p-lista");
+  if(!q){ cont.style.display = "none"; return; }
+  const yaEstan = new Set(personasLabor.map(p=>p.id));
+  const res = todosTrabajadores.filter(t=>!yaEstan.has(t.id) && (t.nombre||"").toLowerCase().includes(q)).slice(0,30);
+  if(res.length===0){ cont.innerHTML = '<div style="padding:8px 10px;color:var(--gris);font-size:13px">Sin coincidencias</div>'; cont.style.display="block"; return; }
+  cont.innerHTML = res.map(t=>`<div class="opcion-persona" data-id="${t.id}" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:1px solid #f0efe6">${escapar(t.nombre)}</div>`).join("");
+  cont.style.display = "block";
+  // enlazar clics por data-id (evita problemas con nombres que tengan comillas/apostrofes)
+  cont.querySelectorAll(".opcion-persona").forEach(el=>{
+    el.onclick = ()=>{ const id=parseInt(el.getAttribute("data-id"),10); const t=todosTrabajadores.find(x=>x.id===id); agregarPersona(id, t?t.nombre:""); };
+  });
+}
+async function agregarPersona(trabId, nombre){
+  const r = await fetch(`/api/labores/${editandoId}/personas`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({trabajador_id:trabId})});
+  if(r.ok){
+    personasLabor.push({id:trabId,nombre});
+    document.getElementById("p-buscar").value = "";
+    document.getElementById("p-lista").style.display = "none";
+    pintarPersonas();
+  }
+}
+async function quitarPersona(trabId){
+  const r = await fetch(`/api/labores/${editandoId}/personas/${trabId}`,{method:"DELETE"});
+  if(r.ok){ personasLabor = personasLabor.filter(p=>p.id!==trabId); pintarPersonas(); }
+}
+
+function cerrarModal(){ document.getElementById("modal").classList.remove("abierto"); }
+
+async function guardar(){
+  const btn = document.getElementById("btn-guardar");
+  const aviso = document.getElementById("aviso");
+  const nombre = document.getElementById("m-nombre").value.trim();
+  if(!nombre){ aviso.textContent="El nombre es obligatorio."; aviso.className="aviso error"; return; }
+  const body = {
+    nombre,
+    materiales: matsElegidos.map(m=>m.id),
+    codigo: document.getElementById("m-codigo").value.trim() || null,
+    unidad_rendimiento: document.getElementById("m-unidad").value.trim() || null,
+    precio_unidad: document.getElementById("m-precio").value ? parseFloat(document.getElementById("m-precio").value) : null,
+    elemento_costo: document.getElementById("m-elemento").value,
+    categoria_costo: document.getElementById("m-categoria").value,
+    frecuencia_semanal: document.getElementById("m-frecuencia").value ? parseInt(document.getElementById("m-frecuencia").value,10) : null,
+    rendimiento_estandar: document.getElementById("m-rendimiento").value ? parseFloat(document.getElementById("m-rendimiento").value) : null,
+    compatible_riego: document.getElementById("m-riego").checked,
+    media_jornada_sabado: document.getElementById("m-sabado").checked,
+    es_regular: document.getElementById("m-regular").checked,
+  };
+  if(editandoId) body.activo = document.getElementById("m-activo").checked;
+
+  btn.disabled = true;
+  const url = editandoId ? `/api/labores/${editandoId}` : "/api/labores";
+  const method = editandoId ? "PUT" : "POST";
+  const r = await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d = await r.json();
+  btn.disabled = false;
+  if(!r.ok){ aviso.textContent = d.error || "No se pudo guardar."; aviso.className="aviso error"; return; }
+  cerrarModal();
+  await cargar();
+}
+
+let borrarId=null;
+function diasRestantes(fechaIso){
+  if(!fechaIso) return "7 días";
+  const fin=new Date(fechaIso.replace(" ","T")+"Z");
+  const ms=fin-new Date();
+  const dias=Math.ceil(ms/86400000);
+  if(dias<=0) return "hoy";
+  return dias===1?"1 día":`${dias} días`;
+}
+function pedirBorrado(id,nombre){
+  borrarId=id;
+  document.getElementById("borrar-nombre").textContent=nombre;
+  document.getElementById("borrar-clave").value="";
+  document.getElementById("aviso-borrar").className="aviso";
+  document.getElementById("modal-borrar").classList.add("abierto");
+}
+function cerrarBorrar(){ document.getElementById("modal-borrar").classList.remove("abierto"); }
+async function confirmarBorrado(){
+  const btn=document.getElementById("btn-confirmar-borrar"), aviso=document.getElementById("aviso-borrar");
+  const password=document.getElementById("borrar-clave").value;
+  if(!password){ aviso.textContent="Escribe tu contraseña."; aviso.className="aviso error"; return; }
+  btn.disabled=true;
+  const r=await fetch(`/api/labores/${borrarId}/borrar`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password})});
+  const d=await r.json(); btn.disabled=false;
+  if(!r.ok){ aviso.textContent=d.error||"No se pudo borrar."; aviso.className="aviso error"; return; }
+  cerrarBorrar(); await cargar();
+}
+async function cancelarBorrado(id){
+  const r=await fetch(`/api/labores/${id}/cancelar-borrado`,{method:"POST"});
+  if(r.ok) await cargar();
+}
+
+function filtrarMats(){
+  const q=document.getElementById("m-buscar-mat").value.toLowerCase().trim();
+  const cont=document.getElementById("m-lista-mats");
+  if(!q){ cont.style.display="none"; return; }
+  const elegidos=new Set(matsElegidos.map(m=>m.id));
+  const res=todosMateriales.filter(m=>!elegidos.has(m.id) && ((m.nombre||"").toLowerCase().includes(q)||(m.codigo||"").toLowerCase().includes(q))).slice(0,30);
+  if(res.length===0){ cont.innerHTML='<div style="padding:8px 10px;color:var(--gris);font-size:13px">Sin coincidencias</div>'; cont.style.display="block"; return; }
+  cont.innerHTML=res.map(m=>`<div class="opcion-mat" data-id="${m.id}" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:1px solid #f0efe6">${escapar((m.codigo?m.codigo+" · ":"")+m.nombre)}</div>`).join("");
+  cont.style.display="block";
+  cont.querySelectorAll(".opcion-mat").forEach(el=>{
+    el.onclick=()=>{ const id=parseInt(el.getAttribute("data-id"),10); const m=todosMateriales.find(x=>x.id===id); if(m) agregarMat(m); };
+  });
+}
+function agregarMat(m){
+  if(!matsElegidos.some(x=>x.id===m.id)) matsElegidos.push({id:m.id,codigo:m.codigo,nombre:m.nombre});
+  document.getElementById("m-buscar-mat").value="";
+  document.getElementById("m-lista-mats").style.display="none";
+  pintarMatsElegidos();
+}
+function quitarMat(id){ matsElegidos=matsElegidos.filter(m=>m.id!==id); pintarMatsElegidos(); }
+function pintarMatsElegidos(){
+  const cont=document.getElementById("m-mats-elegidos");
+  if(matsElegidos.length===0){ cont.innerHTML='<small class="dato">Ninguno todavía</small>'; return; }
+  cont.innerHTML=matsElegidos.map(m=>`<span style="display:inline-flex;align-items:center;gap:6px;background:#e8efe6;color:var(--verde);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">${escapar((m.codigo?m.codigo+" · ":"")+m.nombre)} <span style="cursor:pointer;color:var(--error)" onclick="quitarMat(${m.id})">✕</span></span>`).join("");
+}
+
+let laborEnVista=null;
+function verLabor(l){
+  laborEnVista=l;
+  document.getElementById("ver-titulo").textContent=(l.codigo?l.codigo+" · ":"")+l.nombre;
+  const elem={mano_obra:"Mano de obra",material:"Material",servicios:"Servicios"}[l.elemento_costo]||"—";
+  const fila=(et,vl)=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0efe6"><span style="color:var(--gris);font-weight:600">${et}</span><span style="text-align:right">${vl}</span></div>`;
+  const mats=(l.materiales&&l.materiales.length)?l.materiales.map(m=>escapar((m.codigo?m.codigo+" · ":"")+m.nombre)).join(", "):'<small class="dato">ninguno</small>';
+  document.getElementById("ver-cuerpo").innerHTML=
+    fila("Código", l.codigo?escapar(l.codigo):"—")+
+    fila("Nombre", escapar(l.nombre))+
+    fila("Rendimiento estándar", l.rendimiento_estandar!=null?l.rendimiento_estandar+" "+escapar((l.unidad_rendimiento||"").toLowerCase()):'<small class="dato">sin medir</small>')+
+    fila("Precio por unidad", l.precio_unidad!=null?"$"+Number(l.precio_unidad).toLocaleString('es-CO'):"—")+
+    fila("Frecuencia semanal", l.frecuencia_semanal??"—")+
+    fila("Elemento de costo", elem)+
+    fila("Categoría", l.categoria_costo?escapar(l.categoria_costo):"—")+
+    fila("Compatible con riego", l.compatible_riego?"Sí":"No")+
+    fila("Media jornada sábado", l.media_jornada_sabado?"Sí":"No")+
+    fila("Labor regular (propuesta semanal)", l.es_regular?"Sí":"No")+
+    fila("Estado", l.activo?"Activa":"Inactiva")+
+    `<div style="padding:10px 0 0"><span style="color:var(--gris);font-weight:600">Materiales y herramientas:</span><br>${mats}</div>`+
+    `<div style="padding:10px 0 0"><span style="color:var(--gris);font-weight:600">Personas que hacen esta labor:</span><br><span id="ver-personas"><small class="dato">cargando…</small></span></div>`;
+  // cargar personas (async)
+  fetch(`/api/labores/${l.id}/personas`).then(r=>r.ok?r.json():{personas:[]}).then(d=>{
+    const el=document.getElementById("ver-personas");
+    if(el) el.innerHTML = d.personas.length ? d.personas.map(p=>escapar(p.nombre)).join(", ") : '<small class="dato">nadie asignado</small>';
+  });
+  document.getElementById("ver-editar").style.display=esAdmin?"inline-block":"none";
+  document.getElementById("modal-ver").classList.add("abierto");
+}
+function cerrarVer(){ document.getElementById("modal-ver").classList.remove("abierto"); }
+function editarDesdeVer(){ cerrarVer(); editar(laborEnVista); }
+
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+init();
+</script>
+<script>
+// Campanita de pendientes (inyectada en todas las paginas)
+(function(){
+  function crearCampanita(){
+    const nav=document.querySelector("header nav");
+    if(!nav) return;
+    const a=document.createElement("a");
+    a.href="/pendientes.html";
+    a.title="Centro de pendientes";
+    a.style.cssText="position:relative;display:inline-flex;align-items:center;gap:4px";
+    a.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="camp-rojo" style="display:none;background:#a4443a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span><span id="camp-azul" style="display:none;background:#2c5866;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span>';
+    nav.appendChild(a);
+    actualizarCampanita();
+    setInterval(actualizarCampanita, 60000); // refresca cada minuto
+  }
+  async function actualizarCampanita(){
+    try{
+      const r=await fetch("/api/pendientes/contadores");
+      if(!r.ok) return;
+      const d=await r.json();
+      const rojo=document.getElementById("camp-rojo"), azul=document.getElementById("camp-azul");
+      if(rojo){ if(d.por_resolver>0){ rojo.textContent=d.por_resolver; rojo.style.display="inline-block"; } else rojo.style.display="none"; }
+      if(azul){ if(d.por_leer>0){ azul.textContent=d.por_leer; azul.style.display="inline-block"; } else azul.style.display="none"; }
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",crearCampanita);
+  else crearCampanita();
+})();
+</script>
+
+</body>
+</html>

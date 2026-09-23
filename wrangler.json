@@ -1,0 +1,16 @@
+{
+  "name": "la-siria",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "la-siria",
+      "database_id": "4870b85a-f187-471c-a2af-ec6037c86260"
+    }
+  ]
+}

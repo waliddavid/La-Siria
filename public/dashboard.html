@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria - Dashboard</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;
+    --c-verde:#4a9d5b;--c-amarillo:#d9b83a;--c-rojo:#c25146;--c-gris:#c9c9bd;--c-susp:#9a9a8f;
+    --azul-claro:#e6eef4;--azul-borde:#c5d8e6;--azul-txt:#2c5866}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}.marca .hoja{width:22px;height:22px;color:#a9c9b2}.marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .contenedor{max-width:1300px;margin:0 auto;padding:24px 20px}
+  h1{font-size:23px;font-weight:650;color:var(--verde-hondo)}.sub{color:var(--gris);font-size:14px;margin-bottom:16px}
+  /* layout de 3 zonas */
+  .zonas{display:grid;grid-template-columns:230px 1fr 230px;gap:16px;align-items:start}
+  .col-tit{font-size:12px;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+  .mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .mini{background:#fff;border:1px solid var(--linea);border-radius:10px;padding:10px 11px}
+  .mini .n{font-size:17px;font-weight:700;color:var(--verde-hondo);line-height:1.15}
+  .mini .t{font-size:10.5px;color:var(--gris);margin-top:2px}
+  .mini.pend .n{color:var(--gris);font-size:13px;font-style:italic}
+  .mapa-caja{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:14px}
+  .leyenda{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;font-size:11.5px;align-items:center}
+  .leyenda .it{display:flex;align-items:center;gap:5px}
+  .leyenda .box{width:12px;height:12px;border-radius:3px}
+  svg#mapa{width:100%;height:auto;display:block}
+  .lote-pol{stroke:#fff;stroke-width:1.5;cursor:pointer;transition:opacity .1s}
+  .lote-pol:hover{opacity:.8}
+  .lote-pol.sel{stroke:var(--azul-txt);stroke-width:3}
+  .lote-lbl{font-size:13px;font-weight:700;fill:#fff;text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:rgba(0,0,0,.25);stroke-width:2px}
+  /* columna derecha: detalle del lote (azul claro) */
+  .det-vacio{color:var(--gris);font-size:13px;background:#fff;border:1px dashed var(--linea);border-radius:10px;padding:16px;text-align:center}
+  .mini.lote{background:var(--azul-claro);border-color:var(--azul-borde)}
+  .mini.lote .n{color:var(--azul-txt)}
+  .det-nombre{font-weight:700;color:var(--azul-txt);font-size:15px;margin-bottom:8px}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+  @media(max-width:900px){ .zonas{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/></svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav>
+      <a href="/dashboard.html" class="activo">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+      <a href="/planificador.html">Planificador</a>
+      <a href="/almacen.html">Almacen</a>
+      <a href="/configuracion.html" id="nav-config" style="display:none">Configuracion</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual"><span id="quien"></span><button class="salir" onclick="salir()">Salir</button></div>
+  </header>
+  <div class="contenedor">
+    <h1>Dashboard de la finca</h1>
+    <p class="sub">Estado de los lotes segun el embolse real (promedio de las ultimas 2 semanas). Haz clic en un lote para ver su detalle a la derecha.</p>
+    <div id="cargando" class="cargando">Cargando...</div>
+    <div id="contenido" style="display:none">
+      <div class="zonas">
+        <!-- IZQUIERDA: info finca -->
+        <div>
+          <div class="col-tit">La finca</div>
+          <div class="mini-grid" id="mini-finca"></div>
+        </div>
+        <!-- CENTRO: mapa -->
+        <div class="mapa-caja">
+          <div class="leyenda">
+            <div class="it"><span class="box" style="background:var(--c-verde)"></span> &ge;90%</div>
+            <div class="it"><span class="box" style="background:var(--c-amarillo)"></span> 80-89%</div>
+            <div class="it"><span class="box" style="background:var(--c-rojo)"></span> &lt;80%</div>
+            <div class="it"><span class="box" style="background:var(--c-susp)"></span> Suspendido</div>
+            <div class="it"><span class="box" style="background:var(--c-gris)"></span> Sin dato</div>
+          </div>
+          <svg id="mapa" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+        <!-- DERECHA: detalle del lote -->
+        <div>
+          <div class="col-tit">Lote seleccionado</div>
+          <div id="det-lote"><div class="det-vacio">Haz clic en un lote del mapa para ver su detalle.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+<script>
+const MAPA={"w":800,"h":600,"lotes":[{"lote":1,"pts":[[107.4,168.7],[141.1,183.0],[170.1,195.8],[183.2,153.0],[194.2,123.9],[211.1,69.3],[196.0,60.2],[191.5,39.9],[189.2,22.8],[183.0,20.0],[162.8,31.1],[142.7,39.0],[131.4,38.1],[127.4,71.3],[122.2,107.2],[116.6,128.5],[111.6,146.5],[111.5,156.8],[107.4,168.7]],"cx":152.7,"cy":101.3},{"lote":2,"pts":[[175.1,182.6],[170.1,195.8],[312.9,259.6],[354.6,280.3],[424.3,143.2],[385.0,172.9],[359.3,212.0],[336.1,216.0],[321.4,208.0],[300.6,203.7],[260.7,206.0],[239.2,204.2],[213.4,199.2],[206.2,194.4],[200.0,195.8],[192.9,192.7],[187.1,192.9],[181.5,187.4],[175.1,182.6]],"cx":262.9,"cy":201.5},{"lote":3,"pts":[[424.3,143.2],[354.6,280.3],[397.9,308.6],[463.1,186.9],[459.4,120.9],[445.9,114.2],[435.9,124.9],[443.1,133.4],[424.3,143.2]],"cx":427.6,"cy":172.8},{"lote":4,"pts":[[463.1,186.9],[397.9,308.6],[457.9,346.7],[514.0,245.1],[500.6,234.5],[468.8,229.3],[463.1,186.9]],"cx":466.5,"cy":248.3},{"lote":5,"pts":[[516.6,241.8],[457.9,346.7],[513.2,380.8],[585.5,272.4],[563.5,258.1],[552.9,250.8],[541.2,247.8],[516.6,241.8]],"cx":530.9,"cy":280.0},{"lote":6,"pts":[[585.3,272.3],[513.1,380.6],[604.4,434.1],[661.2,357.2],[607.6,367.6],[578.5,354.4],[595.2,311.1],[601.3,284.0],[585.3,272.3]],"cx":592.4,"cy":337.1},{"lote":7,"pts":[[604.5,434.3],[667.6,472.6],[755.1,357.1],[705.0,344.0],[661.4,357.3],[604.5,434.3]],"cx":666.4,"cy":399.9},{"lote":8,"pts":[[667.6,472.6],[769.0,536.4],[780.0,524.0],[774.8,507.7],[772.5,482.4],[774.1,445.1],[755.1,357.1],[667.6,472.6]],"cx":745.1,"cy":474.7},{"lote":9,"pts":[[654.2,465.6],[599.5,547.8],[637.5,543.1],[658.4,547.3],[674.5,552.1],[688.9,561.2],[700.0,571.7],[709.0,580.0],[722.6,578.0],[733.3,576.3],[769.0,536.4],[654.2,465.6]],"cx":683.4,"cy":543.8},{"lote":10,"pts":[[654.2,465.6],[588.7,425.7],[528.3,514.3],[536.5,519.2],[542.8,549.2],[553.5,557.6],[561.9,560.4],[567.3,556.4],[577.7,555.1],[583.4,560.8],[598.3,550.0],[654.2,465.6]],"cx":578.9,"cy":523.3},{"lote":11,"pts":[[442.7,482.5],[486.6,479.9],[528.3,514.3],[588.7,425.7],[516.9,384.5],[442.7,482.5]],"cx":501.0,"cy":461.6},{"lote":12,"pts":[[516.9,384.5],[475.0,357.7],[369.0,461.7],[406.2,502.0],[442.3,480.7],[516.9,384.5]],"cx":454.4,"cy":428.5},{"lote":13,"pts":[[475.0,357.7],[416.8,321.4],[326.9,415.5],[369.0,461.7],[475.0,357.7]],"cx":412.5,"cy":382.8},{"lote":14,"pts":[[416.8,321.4],[354.8,281.2],[274.0,374.4],[326.9,415.5],[416.8,321.4]],"cx":357.9,"cy":342.8},{"lote":15,"pts":[[354.6,280.3],[282.9,246.4],[202.5,355.2],[222.8,355.5],[239.8,360.6],[246.3,356.6],[275.9,370.9],[354.6,280.3]],"cx":272.4,"cy":325.7},{"lote":16,"pts":[[282.9,246.4],[223.6,220.0],[135.6,358.0],[155.9,364.4],[201.3,355.9],[282.9,246.4]],"cx":213.7,"cy":298.5},{"lote":17,"pts":[[223.6,220.0],[175.7,198.5],[96.5,324.6],[106.1,362.1],[126.0,352.4],[135.6,358.0],[223.6,220.0]],"cx":155.3,"cy":290.8},{"lote":18,"pts":[[175.7,198.5],[107.4,168.7],[108.0,219.9],[25.6,217.7],[20.0,261.6],[26.9,268.6],[49.6,253.0],[76.2,246.8],[89.9,251.2],[96.5,324.6],[175.7,198.5]],"cx":86.5,"cy":237.2}]};
+let datos=null, loteSel=null;
+const COLOR={verde:"#4a9d5b",amarillo:"#d9b83a",rojo:"#c25146",gris:"#c9c9bd",suspendido:"#9a9a8f"};
+async function init(){
+  const rme=await fetch("/api/me"); if(!rme.ok){window.location.href="/";return;}
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" - "+me.rol;
+  if(me.rol==="administrador"){ document.getElementById("nav-usuarios").style.display="inline-block"; document.getElementById("nav-config").style.display="inline-block"; }
+  await cargar();
+}
+async function cargar(){
+  const r=await fetch("/api/dashboard"); datos=await r.json();
+  pintarFinca(); pintarMapa();
+  document.getElementById("cargando").style.display="none";
+  document.getElementById("contenido").style.display="block";
+}
+function mini(n,t,cls){ return '<div class="mini '+(cls||'')+'"><div class="n">'+n+'</div><div class="t">'+t+'</div></div>'; }
+function pintarFinca(){
+  const i=datos.indicadores;
+  document.getElementById("mini-finca").innerHTML=
+    mini(i.ha_activas+" ha","Hectareas activas")+
+    mini(i.lotes_activos,"Lotes activos")+
+    mini(Number(i.racimos_semana).toLocaleString('es-CO'),"Racimos/sem")+
+    mini(i.racimos_ha_finca,"Racimos/ha")+
+    mini(i.pct_finca+"%","% del max ("+datos.max_racimos+")")+
+    mini("sin dato","Ratio (caj/racimo)","pend")+
+    mini("sin dato","Merma","pend");
+}
+function pintarMapa(){
+  const svg=document.getElementById("mapa"); svg.innerHTML="";
+  const porLote={}; datos.lotes.forEach(function(l){porLote[l.id]=l;});
+  MAPA.lotes.forEach(function(m){
+    const dat=porLote[m.lote]||{color:"gris"};
+    const pts=m.pts.map(function(p){return p.join(",");}).join(" ");
+    const pol=document.createElementNS("http://www.w3.org/2000/svg","polygon");
+    pol.setAttribute("points",pts);
+    pol.setAttribute("fill",COLOR[dat.color]||COLOR.gris);
+    pol.setAttribute("class","lote-pol"+(loteSel===m.lote?" sel":""));
+    pol.addEventListener("click",function(){ loteSel=m.lote; mostrarDetalle(m.lote); pintarMapa(); });
+    svg.appendChild(pol);
+    const t=document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute("x",m.cx); t.setAttribute("y",m.cy+4); t.setAttribute("class","lote-lbl");
+    t.textContent=m.lote; svg.appendChild(t);
+  });
+}
+function mostrarDetalle(loteId){
+  const l=datos.lotes.find(function(x){return x.id===loteId;}); if(!l) return;
+  const estado=l.activo?(l.embolse_sem>0?l.pct+"% del max":"sin embolse"):"suspendido";
+  document.getElementById("det-lote").innerHTML=
+    '<div class="det-nombre">'+escapar(l.nombre)+'</div>'+
+    '<div class="mini-grid">'+
+      mini(l.hectareas+" ha","Hectareas","lote")+
+      mini(Number(l.embolse_sem).toLocaleString('es-CO'),"Racimos/sem","lote")+
+      mini(l.racimos_ha,"Racimos/ha","lote")+
+      mini(estado,"Estado","lote")+
+      mini("sin dato","Ratio","lote")+
+      mini("sin dato","Merma","lote")+
+    '</div>';
+}
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Trabajadores</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}
+  nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}
+  nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .salir:hover{background:rgba(255,255,255,.2)}
+  .contenedor{max-width:1150px;margin:0 auto;padding:32px 28px}
+  .fila-titulo{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:12px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}
+  .sub{color:var(--gris);font-size:14px;margin-bottom:20px}
+  .acciones-top{display:flex;gap:10px;flex-wrap:wrap}
+  .boton{background:var(--verde);color:#fff;border:none;padding:11px 18px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .boton.sec{background:#fff;color:var(--verde);border:1.5px solid var(--verde-claro)}
+  .boton.sec:hover{background:#f0f4ef}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:820px}
+  th{background:#f2f1e8;text-align:left;padding:12px 15px;font-size:12px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea);white-space:nowrap}
+  td{padding:12px 15px;font-size:13.5px;border-bottom:1px solid #f0efe6;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  tr.inactivo td:first-child{opacity:.55}
+  .hab-chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:#e8efe6;color:var(--verde);font-weight:600;margin:1px 2px 1px 0}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:600}
+  .badge.activo{background:#e8efe6;color:var(--verde)}
+  .badge.inactivo{background:#eee;color:var(--gris)}
+  .badge.susp{background:#f3e0dd;color:var(--error)}
+  .accion{background:none;border:1px solid var(--linea);border-radius:7px;padding:6px 11px;font-size:12.5px;cursor:pointer;color:var(--tinta)}
+  .accion:hover{border-color:var(--verde-claro)}
+  .cargando{padding:50px;text-align:center;color:var(--gris)}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+  .vacio{padding:40px;text-align:center;color:var(--gris);font-size:14px}
+  small.dato{color:var(--gris);font-size:12px}
+  /* modal */
+  .modal-fondo{display:none;position:fixed;inset:0;background:rgba(29,59,42,.5);align-items:flex-start;justify-content:center;padding:24px;z-index:10;overflow:auto}
+  .modal-fondo.abierto{display:flex}
+  .modal{background:var(--crema);border-radius:14px;width:100%;max-width:620px;box-shadow:0 24px 60px rgba(0,0,0,.3);margin:auto}
+  .modal-cab{padding:22px 28px 14px;border-bottom:1px solid var(--linea)}
+  .modal-cab h2{font-size:19px;color:var(--verde-hondo);font-weight:650}
+  .modal-cuerpo{padding:20px 28px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .campo{margin-bottom:13px}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  input,select{width:100%;padding:9px 11px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .seccion-tit{font-size:12px;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.04em;margin:18px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--linea)}
+  .habs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .hab{display:flex;align-items:center;gap:7px;font-size:13.5px}
+  .hab input{width:auto}
+  .check{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .check input{width:auto}
+  .check label{margin:0;font-weight:500;font-size:13.5px}
+  .modal-pie{padding:16px 28px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end}
+  .btn-sec{background:none;border:1px solid var(--linea);color:var(--tinta);padding:10px 16px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .aviso{padding:10px 13px;border-radius:8px;font-size:13.5px;margin-bottom:14px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+  .aviso.ok{background:#e9f1e7;color:var(--verde);border:1px solid #cfe0ca;display:block}
+  /* modal carga */
+  .instrucciones{background:#fff;border:1px solid var(--linea);border-radius:10px;padding:16px;font-size:13px;margin-bottom:16px}
+  .instrucciones table{min-width:0;width:100%}
+  .instrucciones th,.instrucciones td{padding:6px 8px;font-size:12px;border-bottom:1px solid #f0efe6}
+  .zona{border:2px dashed var(--linea);border-radius:10px;padding:26px;text-align:center;color:var(--gris);font-size:14px}
+  .resultado{margin-top:14px;font-size:13px}
+  .resultado ul{margin:8px 0 0 18px;color:var(--error)}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+      <a href="/planificador.html">Planificador</a>
+      <a href="/deberser.html">Deber ser</a>
+      <a href="/jornada.html">Jornada</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/asignacion.html">Asignación</a>
+      <a href="/materiales.html">Materiales</a>
+      <a href="/almacen.html">Almacén</a>
+      <a href="/trabajadores.html" class="activo">Trabajadores</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html">Nómina</a>
+      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <div class="fila-titulo">
+      <div><h1>Trabajadores</h1></div>
+      <div class="acciones-top" id="acciones-top" style="display:none">
+        <button class="boton sec" onclick="abrirCarga()">Cargar desde Excel</button>
+        <button class="boton" onclick="abrirNuevo()">+ Nuevo trabajador</button>
+      </div>
+    </div>
+    <p class="sub">La gente de la finca, sus datos y las labores que sabe hacer.</p>
+
+    <div id="nota-permiso" class="nota-permiso" style="display:none">
+      Estás viendo los trabajadores. Para crear o editar, este catálogo lo administra recursos humanos (o el administrador).
+    </div>
+
+    <div id="cargando" class="cargando">Cargando…</div>
+    <div id="vacio" class="vacio" style="display:none">Todavía no hay trabajadores. Usa "Cargar desde Excel" o "+ Nuevo trabajador".</div>
+    <div class="tabla-caja" id="caja" style="display:none">
+      <table>
+        <thead>
+          <tr><th>Nombre</th><th>Cédula</th><th>Cargo</th><th>Contrato</th><th>Pago</th><th>Habilidades</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody id="cuerpo"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal crear/editar -->
+  <div class="modal-fondo" id="modal">
+    <div class="modal">
+      <div class="modal-cab"><h2 id="modal-titulo">Nuevo trabajador</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso" class="aviso"></div>
+        <div class="seccion-tit">Identificación y contacto</div>
+        <div class="campo"><label>Nombre completo *</label><input type="text" id="f-nombre"></div>
+        <div class="grid3">
+          <div class="campo"><label>Cédula</label><input type="text" id="f-cedula"></div>
+          <div class="campo"><label>Teléfono</label><input type="text" id="f-telefono"></div>
+          <div class="campo"><label>Email</label><input type="email" id="f-email"></div>
+        </div>
+        <div class="grid2">
+          <div class="campo"><label>Dirección</label><input type="text" id="f-direccion"></div>
+          <div class="campo"><label>Ciudad de residencia</label><input type="text" id="f-ciudad"></div>
+        </div>
+        <div class="seccion-tit">Datos laborales</div>
+        <div class="grid3">
+          <div class="campo"><label>Tipo de contrato</label>
+            <select id="f-contrato"><option value="">—</option><option value="fijo">Fijo</option><option value="ocasional">Ocasional</option></select>
+          </div>
+          <div class="campo"><label>Ubicación</label>
+            <select id="f-lugar"><option value="">—</option><option value="finca">Finca</option><option value="oficina">Oficina</option></select>
+          </div>
+          <div class="campo"><label>Fecha de ingreso</label><input type="date" id="f-ingreso"></div>
+        </div>
+        <div class="check"><input type="checkbox" id="f-sena"><label for="f-sena">Es aprendiz SENA</label></div>
+        <div class="seccion-tit">Pago</div>
+        <div class="grid2">
+          <div class="campo"><label>Salario del período ($)</label><input type="number" id="f-salario" step="1" placeholder="0"><div style="font-size:11px;color:var(--gris);margin-top:3px">$0 = solo por cantidades (destajo)</div></div>
+          <div class="campo"><label>&nbsp;</label>
+            <div class="check" style="margin-top:8px"><input type="checkbox" id="f-catorcena"><label for="f-catorcena">Se paga en catorcena (14 días)</label></div>
+            <div style="font-size:11px;color:var(--gris)">Sin marcar = quincenal (15 días)</div>
+          </div>
+        </div>
+        <div class="seccion-tit">Habilidades (labores que sabe hacer)</div>
+        <div class="habs" id="habs"></div>
+        <div class="seccion-tit">Estado</div>
+        <div class="check"><input type="checkbox" id="f-activo" checked><label for="f-activo">Trabajador activo</label></div>
+        <div class="check"><input type="checkbox" id="f-suspendido" onchange="toggleSusp()"><label for="f-suspendido">Suspendido</label></div>
+        <div class="grid2" id="susp-fechas" style="display:none">
+          <div class="campo"><label>Suspensión desde</label><input type="date" id="f-susp-desde"></div>
+          <div class="campo"><label>Suspensión hasta</label><input type="date" id="f-susp-hasta"></div>
+        </div>
+        <div class="campo" id="salida-cont" style="display:none"><label>Fecha de salida</label><input type="date" id="f-salida"></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarModal()">Cancelar</button>
+        <button class="boton" id="btn-guardar" onclick="guardar()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal carga Excel -->
+  <div class="modal-fondo" id="modal-carga">
+    <div class="modal">
+      <div class="modal-cab"><h2>Cargar trabajadores desde Excel</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-carga" class="aviso"></div>
+        <div class="instrucciones">
+          <p style="margin-bottom:10px"><strong>Cómo funciona:</strong> descarga la plantilla, llénala (una fila por trabajador) y súbela. Cada columna debe ir así:</p>
+          <table>
+            <tr><th>Columna</th><th>Qué va</th></tr>
+            <tr><td><strong>nombre</strong> *</td><td>Nombre completo (obligatorio)</td></tr>
+            <tr><td>cedula</td><td>Número de cédula (no se repite)</td></tr>
+            <tr><td>telefono</td><td>Teléfono</td></tr>
+            <tr><td>email</td><td>Correo</td></tr>
+            <tr><td>direccion</td><td>Dirección</td></tr>
+            <tr><td>ciudad</td><td>Ciudad de residencia</td></tr>
+            <tr><td>tipo_contrato</td><td>fijo u ocasional</td></tr>
+            <tr><td>lugar</td><td>finca u oficina</td></tr>
+            <tr><td>aprendiz_sena</td><td>si / no</td></tr>
+            <tr><td>fecha_ingreso</td><td>AAAA-MM-DD (ej: 2026-01-15)</td></tr>
+            <tr><td>habilidades</td><td>Labores separadas por coma o punto-y-coma. Ej: <em>Embolse, Deshoje; Riego</em></td></tr>
+          </table>
+          <p style="margin-top:10px"><button class="boton sec" onclick="descargarPlantilla()">Descargar plantilla en blanco</button></p>
+        </div>
+        <label class="zona" for="archivo-excel" id="zona">
+          Haz clic aquí para elegir tu archivo Excel (.xlsx)
+          <input type="file" id="archivo-excel" accept=".xlsx,.xls" style="display:none" onchange="procesarArchivo(event)">
+        </label>
+        <div class="resultado" id="resultado"></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarCarga()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let puedeEditar=false, editandoId=null, laboresLista=[];
+
+async function init(){
+  const rme=await fetch("/api/me");
+  if(!rme.ok){ window.location.href="/"; return; }
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  puedeEditar=(me.rol==="administrador"||me.rol==="rrhh");
+  if(me.rol==="administrador") document.getElementById("nav-usuarios").style.display="inline-block";
+    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+  if(puedeEditar) document.getElementById("acciones-top").style.display="flex";
+  else document.getElementById("nota-permiso").style.display="block";
+  await cargarLabores();
+  await cargar();
+}
+
+async function cargarLabores(){
+  const r=await fetch("/api/labores"); const d=await r.json();
+  laboresLista=d.labores.filter(l=>l.activo);
+  const cont=document.getElementById("habs"); cont.innerHTML="";
+  laboresLista.forEach(l=>{
+    const div=document.createElement("div"); div.className="hab";
+    div.innerHTML=`<input type="checkbox" id="hab-${l.id}" value="${l.id}"><label for="hab-${l.id}">${escapar(l.nombre)}</label>`;
+    cont.appendChild(div);
+  });
+}
+
+async function cargar(){
+  const r=await fetch("/api/trabajadores"); const d=await r.json();
+  const cuerpo=document.getElementById("cuerpo"); cuerpo.innerHTML="";
+  document.getElementById("cargando").style.display="none";
+  if(d.trabajadores.length===0){
+    document.getElementById("vacio").style.display="block";
+    document.getElementById("caja").style.display="none";
+    return;
+  }
+  d.trabajadores.forEach(t=>{
+    const tr=document.createElement("tr");
+    if(!t.activo) tr.className="inactivo";
+    const habs=(t.habilidades||[]).map(h=>`<span class="hab-chip">${escapar(h.nombre)}</span>`).join("") || '<small class="dato">—</small>';
+    let estado='<span class="badge activo">Activo</span>';
+    if(!t.activo) estado='<span class="badge inactivo">Inactivo</span>';
+    else if(t.suspendido) estado='<span class="badge susp">Suspendido</span>';
+    // resumen de pago
+    let pago="";
+    const sal = t.salario_periodo!=null ? Number(t.salario_periodo) : 0;
+    if(sal>0) pago += "$"+sal.toLocaleString('es-CO');
+    else pago += '<small class="dato">solo cantidades</small>';
+    pago += `<br><small class="dato">${t.paga_catorcena?'catorcena':'quincena'}</small>`;
+    tr.innerHTML=`
+      <td><strong>${escapar(t.nombre)}</strong>${t.es_aprendiz_sena?'<br><small class="dato">Aprendiz SENA</small>':''}</td>
+      <td>${t.cedula?escapar(t.cedula):'<small class="dato">—</small>'}</td>
+      <td>${t.cargo_nombre?escapar(t.cargo_nombre):'<small class="dato">—</small>'}</td>
+      <td>${t.tipo_contrato?escapar(t.tipo_contrato):'<small class="dato">—</small>'}</td>
+      <td>${pago}</td>
+      <td>${habs}</td>
+      <td>${estado}</td>
+      <td>${puedeEditar?`<button class="accion" onclick='editar(${JSON.stringify(t)})'>Editar</button>`:""}</td>`;
+    cuerpo.appendChild(tr);
+  });
+  document.getElementById("vacio").style.display="none";
+  document.getElementById("caja").style.display="block";
+}
+
+function abrirNuevo(){
+  editandoId=null;
+  document.getElementById("modal-titulo").textContent="Nuevo trabajador";
+  ["f-nombre","f-cedula","f-telefono","f-email","f-direccion","f-ciudad","f-ingreso","f-salida","f-susp-desde","f-susp-hasta"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("f-contrato").value="";
+  document.getElementById("f-lugar").value="";
+  document.getElementById("f-sena").checked=false;
+  document.getElementById("f-salario").value="";
+  document.getElementById("f-catorcena").checked=false;
+  document.getElementById("f-activo").checked=true;
+  document.getElementById("f-suspendido").checked=false;
+  document.getElementById("salida-cont").style.display="none";
+  toggleSusp();
+  laboresLista.forEach(l=>document.getElementById("hab-"+l.id).checked=false);
+  document.getElementById("aviso").className="aviso";
+  document.getElementById("modal").classList.add("abierto");
+}
+
+function editar(t){
+  editandoId=t.id;
+  document.getElementById("modal-titulo").textContent="Editar "+t.nombre;
+  document.getElementById("f-nombre").value=t.nombre||"";
+  document.getElementById("f-cedula").value=t.cedula||"";
+  document.getElementById("f-telefono").value=t.telefono||"";
+  document.getElementById("f-email").value=t.email||"";
+  document.getElementById("f-direccion").value=t.direccion||"";
+  document.getElementById("f-ciudad").value=t.ciudad||"";
+  document.getElementById("f-contrato").value=t.tipo_contrato||"";
+  document.getElementById("f-lugar").value=t.lugar||"";
+  document.getElementById("f-ingreso").value=t.fecha_ingreso||"";
+  document.getElementById("f-salida").value=t.fecha_salida||"";
+  document.getElementById("f-sena").checked=!!t.es_aprendiz_sena;
+  document.getElementById("f-salario").value=t.salario_periodo??"";
+  document.getElementById("f-catorcena").checked=!!t.paga_catorcena;
+  document.getElementById("f-activo").checked=!!t.activo;
+  document.getElementById("f-suspendido").checked=!!t.suspendido;
+  document.getElementById("f-susp-desde").value=t.suspension_desde||"";
+  document.getElementById("f-susp-hasta").value=t.suspension_hasta||"";
+  document.getElementById("salida-cont").style.display="block";
+  toggleSusp();
+  const misHabs=new Set((t.habilidades||[]).map(h=>h.id));
+  laboresLista.forEach(l=>document.getElementById("hab-"+l.id).checked=misHabs.has(l.id));
+  document.getElementById("aviso").className="aviso";
+  document.getElementById("modal").classList.add("abierto");
+}
+
+function toggleSusp(){
+  document.getElementById("susp-fechas").style.display=document.getElementById("f-suspendido").checked?"grid":"none";
+}
+function cerrarModal(){ document.getElementById("modal").classList.remove("abierto"); }
+
+function recogerHabilidades(){
+  return laboresLista.filter(l=>document.getElementById("hab-"+l.id).checked).map(l=>l.id);
+}
+
+async function guardar(){
+  const btn=document.getElementById("btn-guardar"), aviso=document.getElementById("aviso");
+  const nombre=document.getElementById("f-nombre").value.trim();
+  if(!nombre){ aviso.textContent="El nombre es obligatorio."; aviso.className="aviso error"; return; }
+  const body={
+    nombre,
+    cedula:document.getElementById("f-cedula").value.trim()||null,
+    telefono:document.getElementById("f-telefono").value.trim()||null,
+    email:document.getElementById("f-email").value.trim()||null,
+    direccion:document.getElementById("f-direccion").value.trim()||null,
+    ciudad:document.getElementById("f-ciudad").value.trim()||null,
+    tipo_contrato:document.getElementById("f-contrato").value||null,
+    lugar:document.getElementById("f-lugar").value||null,
+    fecha_ingreso:document.getElementById("f-ingreso").value||null,
+    fecha_salida:document.getElementById("f-salida").value||null,
+    es_aprendiz_sena:document.getElementById("f-sena").checked,
+    salario_periodo:document.getElementById("f-salario").value?parseFloat(document.getElementById("f-salario").value):0,
+    paga_catorcena:document.getElementById("f-catorcena").checked,
+    activo:document.getElementById("f-activo").checked,
+    suspendido:document.getElementById("f-suspendido").checked,
+    suspension_desde:document.getElementById("f-susp-desde").value||null,
+    suspension_hasta:document.getElementById("f-susp-hasta").value||null,
+    habilidades:recogerHabilidades()
+  };
+  btn.disabled=true;
+  const url=editandoId?`/api/trabajadores/${editandoId}`:"/api/trabajadores";
+  const method=editandoId?"PUT":"POST";
+  const r=await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json(); btn.disabled=false;
+  if(!r.ok){ aviso.textContent=d.error||"No se pudo guardar."; aviso.className="aviso error"; return; }
+  cerrarModal(); await cargar();
+}
+
+/* ---- Carga por Excel ---- */
+const COLUMNAS=["nombre","cedula","telefono","email","direccion","ciudad","tipo_contrato","lugar","aprendiz_sena","fecha_ingreso","habilidades"];
+
+function abrirCarga(){
+  document.getElementById("aviso-carga").className="aviso";
+  document.getElementById("resultado").innerHTML="";
+  document.getElementById("archivo-excel").value="";
+  document.getElementById("modal-carga").classList.add("abierto");
+}
+function cerrarCarga(){ document.getElementById("modal-carga").classList.remove("abierto"); }
+
+function descargarPlantilla(){
+  const ws=XLSX.utils.aoa_to_sheet([COLUMNAS,
+    ["Juan Pérez","12345678","3001234567","juan@ejemplo.com","Calle 1 #2-3","Ciénaga","fijo","finca","no","2026-01-15","Embolse, Deshoje; Riego"]
+  ]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Trabajadores");
+  XLSX.writeFile(wb,"plantilla_trabajadores_la_siria.xlsx");
+}
+
+async function procesarArchivo(e){
+  const file=e.target.files[0]; if(!file) return;
+  const aviso=document.getElementById("aviso-carga");
+  const resultado=document.getElementById("resultado");
+  resultado.innerHTML="Leyendo archivo…";
+  try{
+    const data=await file.arrayBuffer();
+    const wb=XLSX.read(data,{type:"array"});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const filasRaw=XLSX.utils.sheet_to_json(ws,{defval:""});
+    if(filasRaw.length===0){ resultado.innerHTML=""; aviso.textContent="El archivo no tiene filas."; aviso.className="aviso error"; return; }
+    // normalizar claves de columna a minuscula sin espacios
+    const filas=filasRaw.map(f=>{
+      const o={};
+      for(const k in f){ o[String(k).toLowerCase().trim().replace(/\s+/g,"_")]=f[k]; }
+      return o;
+    });
+    resultado.innerHTML=`Enviando ${filas.length} fila(s)…`;
+    const r=await fetch("/api/trabajadores/carga",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({filas})});
+    const d=await r.json();
+    if(!r.ok){ resultado.innerHTML=""; aviso.textContent=d.error||"No se pudo cargar."; aviso.className="aviso error"; return; }
+    aviso.className="aviso ok";
+    aviso.textContent=`Listo: ${d.creados} creado(s)${d.saltados?`, ${d.saltados} omitido(s)`:""}.`;
+    let html="";
+    if(d.errores&&d.errores.length){
+      html="<strong>Detalles:</strong><ul>"+d.errores.map(x=>`<li>${escapar(x)}</li>`).join("")+"</ul>";
+    }
+    resultado.innerHTML=html;
+    await cargar();
+  }catch(err){
+    resultado.innerHTML=""; aviso.textContent="No se pudo leer el archivo. ¿Es un Excel válido?"; aviso.className="aviso error";
+  }
+}
+
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+init();
+</script>
+<script>
+// Campanita de pendientes (inyectada en todas las paginas)
+(function(){
+  function crearCampanita(){
+    const nav=document.querySelector("header nav");
+    if(!nav) return;
+    const a=document.createElement("a");
+    a.href="/pendientes.html";
+    a.title="Centro de pendientes";
+    a.style.cssText="position:relative;display:inline-flex;align-items:center;gap:4px";
+    a.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="camp-rojo" style="display:none;background:#a4443a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span><span id="camp-azul" style="display:none;background:#2c5866;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span>';
+    nav.appendChild(a);
+    actualizarCampanita();
+    setInterval(actualizarCampanita, 60000); // refresca cada minuto
+  }
+  async function actualizarCampanita(){
+    try{
+      const r=await fetch("/api/pendientes/contadores");
+      if(!r.ok) return;
+      const d=await r.json();
+      const rojo=document.getElementById("camp-rojo"), azul=document.getElementById("camp-azul");
+      if(rojo){ if(d.por_resolver>0){ rojo.textContent=d.por_resolver; rojo.style.display="inline-block"; } else rojo.style.display="none"; }
+      if(azul){ if(d.por_leer>0){ azul.textContent=d.por_leer; azul.style.display="inline-block"; } else azul.style.display="none"; }
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",crearCampanita);
+  else crearCampanita();
+})();
+</script>
+
+</body>
+</html>

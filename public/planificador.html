@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Planificador</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;--ambar:#8a6d1b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}.marca .hoja{width:22px;height:22px;color:#a9c9b2}.marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .contenedor{max-width:1250px;margin:0 auto;padding:24px 20px}
+  h1{font-size:23px;font-weight:650;color:var(--verde-hondo)}.sub{color:var(--gris);font-size:14px;margin-bottom:16px}
+  .controles{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;justify-content:space-between}
+  .nav-sem{display:flex;align-items:center;gap:10px}
+  .nav-sem button{background:#fff;border:1.5px solid var(--linea);border-radius:8px;padding:8px 14px;font-size:14px;font-weight:600;cursor:pointer;color:var(--tinta)}
+  .nav-sem button:hover{border-color:var(--verde-claro)}
+  .sem-label{font-size:16px;font-weight:700;color:var(--verde-hondo);min-width:160px;text-align:center}
+  .sem-fechas{font-size:12px;color:var(--gris);font-weight:400}
+  .vistas{display:flex;gap:4px;background:#e6e4d8;border-radius:9px;padding:3px}
+  .vista-btn{padding:8px 14px;border:none;background:none;font-size:13.5px;font-weight:600;color:var(--gris);cursor:pointer;border-radius:7px}
+  .vista-btn.activa{background:#fff;color:var(--verde-hondo);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .cerrada-banner{background:#f3e0dd;border:1px solid #e6c9c5;color:var(--error);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px;display:none}
+  .cerrada-banner.ver{display:block}
+  .grid-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:auto;max-height:70vh}
+  table{border-collapse:collapse;width:100%;min-width:900px}
+  th,td{border:1px solid #e8e6da;padding:0}
+  thead .semana-fila th{background:var(--verde-hondo);color:#fff;font-size:12px;font-weight:600;padding:6px;text-align:center}
+  thead .dias-fila th{background:#f2f1e8;font-size:11px;font-weight:600;color:var(--gris);padding:7px 4px;text-align:center;white-space:nowrap;position:sticky;top:0}
+  thead .dias-fila th.finde{background:#f4ede0;color:var(--ambar)}
+  thead .dias-fila th.domingo{background:#f6e9e7;color:var(--error)}
+  th.esq{background:#f2f1e8;text-align:left;padding:8px 12px;min-width:150px;position:sticky;left:0;z-index:2}
+  .grupo-fila td{background:#eef2ea;font-weight:700;color:var(--verde-hondo);font-size:12px;padding:6px 12px;position:sticky;left:0}
+  td.fila-lbl{background:#fafaf5;font-size:12.5px;padding:8px 12px;font-weight:600;position:sticky;left:0;z-index:1;min-width:150px}
+  td.celda{min-width:100px;height:44px;vertical-align:top;cursor:pointer;transition:background .1s}
+  td.celda:hover{background:#f3f7f2}
+  td.celda.finde{background:#faf7f0}
+  td.celda.domingo{background:#fbf4f3}
+  td.celda.cerrada{cursor:default}
+  td.celda.cerrada:hover{background:inherit}
+  .asig{background:#e8efe6;border:1px solid #cfe0ca;border-radius:6px;padding:3px 5px;margin:2px;font-size:10.5px;line-height:1.25;position:relative}
+  .asig .quita{position:absolute;top:-1px;right:1px;color:var(--error);cursor:pointer;font-weight:700;font-size:11px;display:none}
+  .asig:hover .quita{display:inline}
+  .asig.sin-trab{background:#fbf1d9;border-color:#ecdfae}
+  .alerta-hab{display:inline-block;background:var(--error);color:#fff;font-weight:700;font-size:10px;width:14px;height:14px;line-height:14px;text-align:center;border-radius:50%;margin-left:4px;cursor:help}
+  td.celda.droppable{outline:1px dashed transparent}
+  td.celda.droppable.drop-hover{background:#e6f0e4;outline:2px dashed var(--verde-claro)}
+  .item-paleta:active{cursor:grabbing}
+  .item-paleta:hover{background:#e8efe6;border-color:var(--verde-claro)}
+  #btn-modo.activo-modo{background:var(--verde);color:#fff;border-color:var(--verde)}
+  .mas{text-align:center;color:#c9c9bd;font-size:14px;cursor:pointer;padding:2px}
+  .mas:hover{color:var(--verde)}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px}
+  /* modal asignar */
+  .modal-fondo{display:none;position:fixed;inset:0;background:rgba(29,59,42,.5);align-items:flex-start;justify-content:center;padding:24px;z-index:20;overflow:auto}
+  .modal-fondo.abierto{display:flex}
+  .modal{background:var(--crema);border-radius:14px;width:100%;max-width:460px;box-shadow:0 24px 60px rgba(0,0,0,.3);margin:auto}
+  .modal-cab{padding:20px 26px 12px;border-bottom:1px solid var(--linea)}.modal-cab h2{font-size:17px;color:var(--verde-hondo);font-weight:650}
+  .modal-cuerpo{padding:18px 26px}.campo{margin-bottom:13px}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  select,input{width:100%;padding:9px 11px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  select:focus,input:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .contexto{background:#eef2ea;border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:14px;color:#3a5a44}
+  .aviso-hab{font-size:12px;color:var(--ambar);margin-top:5px;display:none}
+  .aviso-hab.ver{display:block}
+  .modal-pie{padding:14px 26px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end}
+  .btn-sec{background:none;border:1px solid var(--linea);color:var(--tinta);padding:9px 15px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton{background:var(--verde);color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .aviso{padding:10px 13px;border-radius:8px;font-size:13.5px;margin-bottom:14px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/></svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+      <a href="/planificador.html" class="activo">Planificador</a>
+      <a href="/deberser.html">Deber ser</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual"><span id="quien"></span><button class="salir" onclick="salir()">Salir</button></div>
+  </header>
+  <div class="contenedor">
+    <h1>Planificador de agenda</h1>
+    <p class="sub">Planea la semana: qué labor, en qué lote, qué día y quién. Cambia entre ver por labor o por trabajador.</p>
+    <div id="nota-permiso" class="nota-permiso" style="display:none">Estás viendo el plan. Solo coordinadores y el administrador planean.</div>
+
+    <div class="controles">
+      <div class="nav-sem">
+        <button onclick="cambiarSemana(-1)">‹ Anterior</button>
+        <div class="sem-label"><span id="sem-num"></span><br><span class="sem-fechas" id="sem-fechas"></span></div>
+        <button onclick="cambiarSemana(1)">Siguiente ›</button>
+        <button onclick="irHoy()" style="margin-left:8px">Hoy</button>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="boton" id="btn-proponer" onclick="proponer()" style="display:none">✨ Proponer semana</button>
+        <button class="boton" id="btn-auto" onclick="autoAsignar()" style="display:none;background:var(--verde-claro)">👥 Asignar trabajadores</button>
+        <button class="btn-sec" id="btn-colapsar" onclick="colapsarTodo(true)">Plegar todo</button>
+        <button class="btn-sec" id="btn-expandir" onclick="colapsarTodo(false)">Expandir todo</button>
+        <button class="btn-sec" id="btn-panel" onclick="togglePanel()" style="display:none">Deber ser vs. planeado</button>
+        <button class="btn-sec" id="btn-modo" onclick="toggleModo()" style="display:none">✋ Arrastrar</button>
+        <div class="vistas">
+          <button class="vista-btn activa" id="vb-labor" onclick="setVista('labor')">Por labor</button>
+          <button class="vista-btn" id="vb-trab" onclick="setVista('trabajador')">Por trabajador</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- panel deber ser vs planeado -->
+    <div id="panel-comp" style="display:none;background:#fff;border:1px solid var(--linea);border-radius:12px;padding:16px 18px;margin-bottom:16px">
+      <div style="font-weight:650;color:var(--verde-hondo);margin-bottom:10px">Deber ser vs. planeado (semana <span id="panel-sem"></span>)</div>
+      <div id="panel-cuerpo" style="overflow-x:auto"></div>
+    </div>
+
+    <div id="cerrada-banner" class="cerrada-banner">Esta semana ya pasó (está cerrada). Solo el administrador puede modificarla.</div>
+    <div id="estado-bar" style="display:none;padding:11px 15px;border-radius:10px;margin-bottom:14px;font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"></div>
+
+    <div id="cargando" class="cargando">Cargando…</div>
+    <div id="zona-grid" style="display:none;gap:12px;align-items:flex-start">
+      <div class="grid-caja" id="grid-caja" style="flex:1;min-width:0">
+        <table id="tabla"><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+      </div>
+      <div id="paleta" style="display:none;width:220px;flex:none;background:#fff;border:1px solid var(--linea);border-radius:12px;max-height:70vh;overflow:auto">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--linea);font-weight:650;font-size:13px;color:var(--verde-hondo)" id="paleta-titulo">Arrastra a una celda</div>
+        <div id="paleta-cuerpo" style="padding:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal asignar trabajador a un hueco existente -->
+  <!-- Modal selector de lote (al arrastrar labor sobre un trabajador) -->
+  <div class="modal-fondo" id="modal-lote">
+    <div class="modal" style="max-width:360px">
+      <div class="modal-cab"><h2>¿En qué lote?</h2></div>
+      <div class="modal-cuerpo">
+        <div class="campo"><label>Lote</label><select id="sl-lote"></select></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarSelectorLote()">Cancelar</button>
+        <button class="boton" onclick="confirmarSelectorLote()">Asignar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-fondo" id="modal-trab">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-cab"><h2>Asignar trabajador</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-trab" class="aviso"></div>
+        <div class="contexto" id="contexto-trab"></div>
+        <div class="campo">
+          <label>Trabajador</label>
+          <select id="mt-trab" onchange="chequearHabTrab()"></select>
+          <div class="aviso-hab" id="aviso-hab-trab">⚠ Este trabajador no tiene esa labor entre sus habilidades.</div>
+        </div>
+        <div class="campo">
+          <label>Nota del cambio (opcional)</label>
+          <input type="text" id="mt-explica" placeholder="Motivo, si aplica">
+        </div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarTrab()">Cancelar</button>
+        <button class="boton" id="btn-guardar-trab" onclick="guardarTrab()">Asignar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal asignar -->
+  <div class="modal-fondo" id="modal">
+    <div class="modal">
+      <div class="modal-cab"><h2 id="modal-titulo">Nueva asignación</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso" class="aviso"></div>
+        <div class="contexto" id="contexto"></div>
+        <div class="campo" id="campo-labor">
+          <label>Labor</label>
+          <select id="m-labor" onchange="chequearHab()"></select>
+        </div>
+        <div class="campo" id="campo-lote">
+          <label>Lote</label>
+          <select id="m-lote"></select>
+        </div>
+        <div class="campo">
+          <label>Trabajador (opcional — puede quedar sin asignar)</label>
+          <select id="m-trab" onchange="chequearHab()"></select>
+          <div class="aviso-hab" id="aviso-hab">⚠ Este trabajador no tiene esa labor entre sus habilidades.</div>
+        </div>
+        <div class="campo">
+          <label>Nota del cambio (opcional)</label>
+          <input type="text" id="m-explica" placeholder="Motivo, si aplica">
+        </div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarModal()">Cancelar</button>
+        <button class="boton" id="btn-guardar" onclick="guardar()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let datos={labores:[],lotes:[],trabajadores:[],habilidades:{},soy_coordinador:false,mi_id:null};
+let vista="labor", anio, semana, agenda={anio:0,semana:0,dias:[],asignaciones:[]};
+let ctxFecha=null;
+let semanaActual={anio:0,semana:0};
+
+async function init(){
+  const rme=await fetch("/api/me"); if(!rme.ok){window.location.href="/";return;}
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  esAdmin=(me.rol==="administrador");
+  puedeEditar=(me.rol==="coordinador"||me.rol==="administrador");
+  if(esAdmin) document.getElementById("nav-usuarios").style.display="inline-block";
+    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+  if(!puedeEditar) document.getElementById("nota-permiso").style.display="block";
+  const r=await fetch("/api/plan/datos");
+  if(r.status===403){ document.getElementById("cargando").style.display="none"; return; }
+  datos=await r.json();
+  // semana actual
+  const hoy=new Date();
+  anio=hoy.getUTCFullYear(); semana=semanaISO(hoy);
+  semanaActual={anio,semana};
+  await cargar();
+}
+let esAdmin=false, puedeEditar=false;
+let modoArrastrar=false;
+const esMovil = window.matchMedia("(max-width: 800px)").matches || ('ontouchstart' in window && window.innerWidth < 900);
+
+function semanaISO(d){
+  const date=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const dow=date.getUTCDay()||7; date.setUTCDate(date.getUTCDate()+4-dow);
+  const yStart=new Date(Date.UTC(date.getUTCFullYear(),0,1));
+  return Math.ceil((((date-yStart)/86400000)+1)/7);
+}
+
+function cambiarSemana(delta){
+  semana+=delta;
+  if(semana<1){ anio--; semana=52; } else if(semana>53){ anio++; semana=1; }
+  cargar();
+}
+function irHoy(){ anio=semanaActual.anio; semana=semanaActual.semana; cargar(); }
+
+async function cargar(){
+  document.getElementById("cargando").style.display="block";
+  document.getElementById("zona-grid").style.display="none";
+  const r=await fetch(`/api/plan/${anio}/${semana}`);
+  agenda=await r.json();
+  document.getElementById("sem-num").textContent=`Semana ${semana} · ${anio}`;
+  if(agenda.dias.length){
+    const f0=agenda.dias[0], f6=agenda.dias[6];
+    document.getElementById("sem-fechas").textContent=`${f0.dia_num} — ${f6.dia_num}`;
+  }
+  // cerrada si es semana pasada (y no admin)
+  const esPasada=(anio<semanaActual.anio)||(anio===semanaActual.anio&&semana<semanaActual.semana);
+  window._cerrada = esPasada && !esAdmin;
+  document.getElementById("cerrada-banner").classList.toggle("ver", window._cerrada);
+  // botones de edicion visibles solo si puede editar y no esta cerrada
+  const mostrarEd = puedeEditar && !window._cerrada;
+  document.getElementById("btn-proponer").style.display = mostrarEd ? "inline-block" : "none";
+  document.getElementById("btn-auto").style.display = mostrarEd ? "inline-block" : "none";
+  // boton de arrastrar: solo en computador y si puede editar
+  document.getElementById("btn-modo").style.display = (mostrarEd && !esMovil) ? "inline-block" : "none";
+  if(esMovil || window._cerrada){ modoArrastrar=false; }
+  document.getElementById("btn-panel").style.display = puedeEditar ? "inline-block" : "none";
+  pintar();
+  if(document.getElementById("panel-comp").style.display!=="none") cargarComparacion();
+  document.getElementById("cargando").style.display="none";
+  document.getElementById("zona-grid").style.display="flex";
+  cargarEstado();
+}
+
+async function cargarEstado(){
+  const r=await fetch(`/api/plan/${anio}/${semana}/estado`);
+  if(!r.ok) return;
+  const e=await r.json();
+  const bar=document.getElementById("estado-bar");
+  const colores={edicion:["#eef2ea","#3a5a44","En edición"],solicitada:["#fbf6e5","#7a6414","Aprobación solicitada"],
+    aprobada:["#e9f1e7","#2e5e3a","Aprobada ✓"],rechazada:["#f6e6e4","#a4443a","Rechazada"],
+    cambios_por_aprobar:["#fbf1d9","#8a6d1b","Aprobada · con cambios por aprobar"]};
+  const c=colores[e.estado]||colores.edicion;
+  let acciones="";
+  const mostrarEd = puedeEditar && !window._cerrada;
+  if(esAdmin){
+    // El administrador es la maxima autoridad: aprueba directamente, no solicita.
+    if(e.estado==="edicion"||e.estado==="rechazada"||e.estado==="solicitada"){
+      acciones+=`<button class="boton" style="padding:7px 14px" onclick="revisarSemana('aprobar')">Aprobar</button> `;
+      // rechazar solo tiene sentido si un coordinador la solicito
+      if(e.estado==="solicitada"){
+        acciones+=`<button class="btn-sec" style="border-color:#e6c9c5;color:var(--error)" onclick="revisarSemana('rechazar')">Rechazar</button>`;
+      }
+    }
+    if(e.estado==="cambios_por_aprobar"){
+      acciones+=`<button class="boton" style="padding:7px 14px" onclick="verCambios()">Revisar cambios (${e.cambios.filter(x=>x.estado_aprob==='por_aprobar').length})</button>`;
+    }
+  } else if(mostrarEd){
+    // El coordinador solicita aprobacion al administrador.
+    if(e.estado==="edicion"||e.estado==="rechazada"){
+      acciones+=`<button class="btn-sec" onclick="solicitarAprob()">Solicitar aprobación</button>`;
+    }
+  }
+  let coment = e.comentario ? `<br><small style="font-weight:400">Comentario: ${escapar(e.comentario)}</small>` : "";
+  bar.style.display="flex"; bar.style.background=c[0]; bar.style.color=c[1];
+  bar.innerHTML=`<span style="font-weight:650">Estado: ${c[2]}${coment}</span><span style="display:flex;gap:8px;flex-wrap:wrap">${acciones}</span>`;
+  window._estadoSemana=e;
+}
+
+async function solicitarAprob(){
+  const r=await fetch(`/api/plan/${anio}/${semana}/solicitar`,{method:"POST"});
+  if(r.ok){ alert("Solicitud de aprobación enviada al administrador."); cargarEstado(); }
+}
+async function revisarSemana(decision){
+  let comentario=null;
+  if(decision==="rechazar"){ comentario=prompt("Comentario para el coordinador (por qué se rechaza):"); if(comentario===null) return; }
+  const r=await fetch(`/api/plan/${anio}/${semana}/revisar`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({decision,comentario})});
+  if(r.ok) cargarEstado();
+}
+function verCambios(){
+  const e=window._estadoSemana;
+  const porAprobar=e.cambios.filter(x=>x.estado_aprob==='por_aprobar');
+  if(porAprobar.length===0){ alert("No hay cambios por aprobar."); return; }
+  // ventana simple: revisar uno por uno
+  revisarCambioUno(porAprobar,0);
+}
+async function revisarCambioUno(lista,i){
+  if(i>=lista.length){ cargar(); return; }
+  const c=lista[i];
+  const txt=`Cambio ${i+1} de ${lista.length}\n\nAcción: ${c.accion}\nPor: ${c.usuario||''}\nJustificación: ${c.explicacion||'(sin justificación)'}\n\n¿Aprobar este cambio? (Aceptar = aprobar, Cancelar = rechazar)`;
+  const aprob=confirm(txt);
+  let comentario=null;
+  if(!aprob){ comentario=prompt("Comentario del rechazo (opcional):")||null; }
+  await fetch(`/api/plan/cambio/${c.id}/revisar`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({decision:aprob?"aprobar":"rechazar",comentario})});
+  revisarCambioUno(lista,i+1);
+}
+
+function setVista(v){ vista=v;
+  document.getElementById("vb-labor").classList.toggle("activa",v==="labor");
+  document.getElementById("vb-trab").classList.toggle("activa",v==="trabajador");
+  const enLabor = v==="labor";
+  document.getElementById("btn-colapsar").style.display = enLabor?"inline-block":"none";
+  document.getElementById("btn-expandir").style.display = enLabor?"inline-block":"none";
+  if(modoArrastrar) pintarPaleta();
+  pintar();
+}
+
+function pintar(){
+  const thead=document.getElementById("thead"), tbody=document.getElementById("tbody");
+  const dias=agenda.dias;
+  // cabecera: fila semana + fila dias
+  const finde=i=>i===5, dom=i=>i===6;
+  thead.innerHTML=`
+    <tr class="semana-fila"><th class="esq" rowspan="2">${vista==="labor"?"LABOR / lote":"TRABAJADOR"}</th>
+      <th colspan="7">SEMANA ${semana} · ${anio}</th></tr>
+    <tr class="dias-fila">${dias.map((d,i)=>`<th class="${dom(i)?'domingo':(finde(i)?'finde':'')}">${d.dia_nombre.slice(0,3).toUpperCase()}<br>${d.dia_num}</th>`).join("")}</tr>`;
+
+  tbody.innerHTML="";
+  if(vista==="labor") pintarPorLabor(); else pintarPorTrabajador();
+}
+
+function celda(fecha,i,contenidoHtml,ctx){
+  const finde=i===5?"finde":(i===6?"domingo":"");
+  const cerr=window._cerrada?"cerrada":"";
+  const dropc = (modoArrastrar && !window._cerrada) ? "droppable" : "";
+  const c = ctx || {};
+  const attrs = `data-fecha="${fecha}" data-labor="${c.labor!=null?c.labor:''}" data-lote="${c.lote!=null?c.lote:''}" data-trab="${c.trab!=null?c.trab:''}" data-modo="${c.modo||''}"`;
+  return `<td class="celda ${finde} ${cerr} ${dropc}" ${attrs}>${contenidoHtml}</td>`;
+}
+
+let colapsadas = {}; // labor_id -> true si esta colapsada
+let filaLoteElegido = {}; // labor_id -> [loteId,...] lotes elegidos en filas nuevas (aun sin asignaciones)
+let filasVacias = {};     // labor_id -> cuantas filas vacias extra mostrar (dropdown en "sin asignar")
+
+function pintarPorLabor(){
+  const tbody=document.getElementById("tbody");
+  datos.labores.forEach(lab=>{
+    const asigLabor=agenda.asignaciones.filter(a=>a.labor_id===lab.id);
+    const lotesConAsig=[...new Set(asigLabor.map(a=>a.lote_id))].filter(x=>x!=null);
+    const nHuecos=asigLabor.filter(a=>!a.trabajador_id).length;
+    const nAsig=asigLabor.filter(a=>a.trabajador_id).length;
+    const colap=!!colapsadas[lab.id];
+    // fila de titulo
+    const tr=document.createElement("tr"); tr.className="grupo-fila";
+    const resumen = asigLabor.length
+      ? `<span style="font-weight:400;color:var(--gris);font-size:11px">(${lotesConAsig.length} lotes · ${nAsig} asignados${nHuecos?` · ${nHuecos} sin trabajador`:''})</span>`
+      : `<span style="font-weight:400;color:var(--gris);font-size:11px">(vacío)</span>`;
+    tr.innerHTML=`<td colspan="8" style="cursor:pointer" onclick="toggleColapso(${lab.id})">
+      <span style="display:inline-block;width:16px;color:var(--verde)">${colap?'▸':'▾'}</span>
+      ${escapar((lab.codigo?lab.codigo+" · ":"")+lab.nombre)} ${resumen}</td>`;
+    tbody.appendChild(tr);
+    if(colap) return;
+
+    // lotes con asignacion + lotes elegidos en filas nuevas (sin duplicar)
+    const elegidos = (filaLoteElegido[lab.id]||[]).filter(x=>!lotesConAsig.includes(x));
+    const filas = lotesConAsig.sort((a,b)=>a-b).concat(elegidos);
+    filas.forEach(loteId=>{ dibujarFilaLote(tbody, lab, loteId); });
+    // filas vacias (dropdown en "sin asignar") — siempre al menos 1 si no hay ninguna fila
+    let vacias = filasVacias[lab.id] || 0;
+    if(filas.length===0 && vacias===0) vacias = 1;
+    for(let k=0;k<vacias;k++){ dibujarFilaLote(tbody, lab, null); }
+    // fila angosta con "+" para agregar otra fila de lote
+    if(puedeEditar && !window._cerrada){
+      const trmas=document.createElement("tr");
+      trmas.innerHTML=`<td colspan="8" style="padding:3px 12px;background:#fafaf5;border-top:1px dashed var(--linea)">
+        <span style="cursor:pointer;color:var(--verde);font-size:12px;font-weight:600" onclick="agregarFilaLote(${lab.id})">+ agregar lote a esta labor</span></td>`;
+      tbody.appendChild(trmas);
+    }
+  });
+}
+
+function dibujarFilaLote(tbody, lab, loteId){
+  const tr=document.createElement("tr");
+  const opts = ['<option value="">— sin asignar —</option>'].concat(
+    datos.lotes.map(l=>`<option value="${l.id}" ${l.id===loteId?"selected":""}>${escapar(l.nombre)}</option>`)
+  ).join("");
+  const selHab = (puedeEditar && !window._cerrada) ? "" : "disabled";
+  // loteId null => fila nueva (pasa 'null' literal a cambiarLoteFila)
+  const loteArg = loteId!=null ? loteId : 'null';
+  const sel = `<select class="sel-lote-fila" ${selHab} onchange="cambiarLoteFila(this, ${lab.id}, ${loteArg})">${opts}</select>`;
+  let cels="";
+  agenda.dias.forEach((d,i)=>{
+    let cont="";
+    if(loteId!=null){
+      const asigs=agenda.asignaciones.filter(a=>a.labor_id===lab.id&&a.lote_id===loteId&&a.fecha===d.fecha);
+      cont=asigs.map(a=>chip(a,a.trabajador_nombre||"sin asignar")).join("");
+      cont+=`<div class="mas" onclick="abrir('${d.fecha}','labor',${lab.id},${loteId})">+</div>`;
+    } else {
+      cont=`<div style="text-align:center;color:#ccc;font-size:11px">← elige lote</div>`;
+    }
+    cels+=celda(d.fecha,i,cont,{labor:lab.id,lote:loteId,modo:'labor'});
+  });
+  tr.innerHTML=`<td class="fila-lbl" style="min-width:130px">${sel}</td>${cels}`;
+  tbody.appendChild(tr);
+}
+
+async function cambiarLoteFila(selectEl, laborId, loteViejo){
+  const nuevo = selectEl.value ? parseInt(selectEl.value,10) : null;
+  if(nuevo===null) return;
+  // FILA NUEVA (loteViejo es null): solo registrar el lote elegido, sin preguntar nada
+  if(loteViejo===null || loteViejo===undefined){
+    filaLoteElegido[laborId] = filaLoteElegido[laborId] || [];
+    if(!filaLoteElegido[laborId].includes(nuevo)) filaLoteElegido[laborId].push(nuevo);
+    // consumir una fila vacia (ya se convirtio en fila de lote)
+    if(filasVacias[laborId] && filasVacias[laborId]>0) filasVacias[laborId]--;
+    pintar();
+    return;
+  }
+  // FILA EXISTENTE con lote: cambiar de lote
+  const asigs=agenda.asignaciones.filter(a=>a.labor_id===laborId&&a.lote_id===loteViejo);
+  const conTrabajador=asigs.filter(a=>a.trabajador_id);   // asignaciones con trabajador real
+  if(conTrabajador.length>0){
+    if(!confirm("Este lote ya tiene trabajadores asignados. ¿Mover esas asignaciones al nuevo lote?")){ pintar(); return; }
+    // mover TODAS las asignaciones (con y sin trabajador) al nuevo lote
+    for(const a of asigs){
+      await fetch(`/api/plan/${a.id}`,{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({})});
+      await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({labor_id:laborId,lote_id:nuevo,trabajador_id:a.trabajador_id,fecha:a.fecha})});
+    }
+    await cargar();
+  } else if(asigs.length>0){
+    // solo hay huecos vacios (sin trabajador): moverlos al nuevo lote sin preguntar
+    for(const a of asigs){
+      await fetch(`/api/plan/${a.id}`,{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({})});
+      await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({labor_id:laborId,lote_id:nuevo,trabajador_id:null,fecha:a.fecha})});
+    }
+    await cargar();
+  } else {
+    // fila sin nada: solo cambiar el lote elegido, sin preguntar
+    filaLoteElegido[laborId] = (filaLoteElegido[laborId]||[]).filter(x=>x!==loteViejo);
+    if(!filaLoteElegido[laborId].includes(nuevo)) filaLoteElegido[laborId].push(nuevo);
+    pintar();
+  }
+}
+
+function agregarFilaLote(laborId){
+  filasVacias[laborId]=(filasVacias[laborId]||0)+1;
+  pintar();
+}
+function toggleColapso(laborId){ colapsadas[laborId]=!colapsadas[laborId]; pintar(); }
+function colapsarTodo(v){ datos.labores.forEach(l=>colapsadas[l.id]=v); pintar(); }
+
+function pintarPorTrabajador(){
+  const tbody=document.getElementById("tbody");
+  datos.trabajadores.forEach(t=>{
+    const tr=document.createElement("tr");
+    let cels="";
+    agenda.dias.forEach((d,i)=>{
+      const asigs=agenda.asignaciones.filter(a=>a.trabajador_id===t.id&&a.fecha===d.fecha);
+      let cont=asigs.map(a=>chip(a,(a.labor_codigo?a.labor_codigo+"·":"")+(a.lote_nombre||""))).join("");
+      cont+=`<div style="text-align:center;color:#ddd;font-size:13px" onclick="abrir('${d.fecha}','trabajador',null,null,${t.id})">+</div>`;
+      cels+=celda(d.fecha,i,cont,{trab:t.id,modo:'trabajador'});
+    });
+    tr.innerHTML=`<td class="fila-lbl">${escapar(t.nombre)}</td>${cels}`;
+    tbody.appendChild(tr);
+  });
+}
+
+function chip(a,texto){
+  const sinT=a.trabajador_id?"":"sin-trab";
+  const quita=window._cerrada?"":`<span class="quita" onclick="event.stopPropagation();quitar(${a.id})">✕</span>`;
+  const clic=window._cerrada?"":`onclick="event.stopPropagation();asignarTrab(${a.id})"`;
+  const cursor=window._cerrada?"":'style="cursor:pointer"';
+  // aviso de habilidad: si el trabajador no tiene la labor asignada
+  let alerta="";
+  if(a.trabajador_id){
+    const habs=datos.habilidades[a.trabajador_id]||[];
+    if(!habs.includes(a.labor_id)){
+      alerta=`<span class="alerta-hab" title="Este trabajador no tiene esta labor entre sus habilidades" onclick="event.stopPropagation();alert('⚠ ${escapar((a.trabajador_nombre||'')).replace(/'/g,'')} no tiene la labor ${escapar((a.labor_nombre||'')).replace(/'/g,'')} entre sus habilidades. Se permitió la asignación, pero revisa si es correcto.')">!</span>`;
+    }
+  }
+  return `<div class="asig ${sinT}" ${cursor} ${clic} title="${a.trabajador_id?'Cambiar trabajador':'Asignar trabajador'}">${escapar(texto)}${alerta}${quita}</div>`;
+}
+
+/* modal */
+let modoAsig={vista:"labor",laborId:null,loteId:null,trabId:null};
+function abrir(fecha,vistaOrigen,laborId,loteId,trabId){
+  if(window._cerrada) return;
+  if(!puedeEditar) return;
+  ctxFecha=fecha; modoAsig={vista:vistaOrigen,laborId,loteId,trabId};
+  const dia=agenda.dias.find(d=>d.fecha===fecha);
+  document.getElementById("contexto").textContent=`${dia?dia.dia_nombre+" "+dia.dia_num:""} · semana ${semana}`;
+  // labores
+  const sl=document.getElementById("m-labor");
+  sl.innerHTML=datos.labores.map(l=>`<option value="${l.id}" ${l.id===laborId?"selected":""}>${escapar((l.codigo?l.codigo+" · ":"")+l.nombre)}</option>`).join("");
+  // lotes
+  const slo=document.getElementById("m-lote");
+  slo.innerHTML=datos.lotes.map(l=>`<option value="${l.id}" ${l.id===loteId?"selected":""}>${escapar(l.nombre)}</option>`).join("");
+  // trabajadores
+  const st=document.getElementById("m-trab");
+  st.innerHTML='<option value="">— sin asignar —</option>'+datos.trabajadores.map(t=>`<option value="${t.id}" ${t.id===trabId?"selected":""}>${escapar(t.nombre)}</option>`).join("");
+  document.getElementById("m-explica").value="";
+  document.getElementById("aviso").className="aviso";
+  chequearHab();
+  document.getElementById("modal").classList.add("abierto");
+}
+function cerrarModal(){ document.getElementById("modal").classList.remove("abierto"); }
+function chequearHab(){
+  const lId=parseInt(document.getElementById("m-labor").value,10);
+  const tId=parseInt(document.getElementById("m-trab").value,10);
+  const av=document.getElementById("aviso-hab");
+  if(tId&&lId){ const habs=datos.habilidades[tId]||[]; av.classList.toggle("ver",!habs.includes(lId)); }
+  else av.classList.remove("ver");
+}
+async function guardar(){
+  const btn=document.getElementById("btn-guardar"), aviso=document.getElementById("aviso");
+  const body={
+    labor_id:parseInt(document.getElementById("m-labor").value,10),
+    lote_id:parseInt(document.getElementById("m-lote").value,10),
+    trabajador_id:document.getElementById("m-trab").value?parseInt(document.getElementById("m-trab").value,10):null,
+    fecha:ctxFecha, explicacion:document.getElementById("m-explica").value.trim()||null
+  };
+  if(!body.labor_id||!body.lote_id){ aviso.textContent="Elige labor y lote."; aviso.className="aviso error"; return; }
+  btn.disabled=true;
+  const r=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json(); btn.disabled=false;
+  if(!r.ok){ aviso.textContent=d.error||"No se pudo guardar."; aviso.className="aviso error"; return; }
+  cerrarModal(); await cargar();
+}
+async function quitar(id){
+  if(window._cerrada) return;
+  const r=await fetch(`/api/plan/${id}`,{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({})});
+  if(r.ok) await cargar();
+}
+async function proponer(){
+  if(!confirm("El sistema propondrá las labores de la semana (según su frecuencia) en los lotes activos, sin trabajador asignado. Podrás ajustar todo. ¿Continuar?")) return;
+  const r=await fetch(`/api/plan/${anio}/${semana}/proponer`,{method:"POST"});
+  const d=await r.json();
+  if(r.ok){ await cargar(); }
+}
+function togglePanel(){
+  const p=document.getElementById("panel-comp");
+  if(p.style.display==="none"){ p.style.display="block"; cargarComparacion(); }
+  else p.style.display="none";
+}
+async function cargarComparacion(){
+  document.getElementById("panel-sem").textContent=semana+" · "+anio;
+  const r=await fetch(`/api/plan/${anio}/${semana}/comparacion`);
+  const d=await r.json();
+  const cont=document.getElementById("panel-cuerpo");
+  if(!d.filas||d.filas.length===0){ cont.innerHTML='<div style="color:var(--gris);font-size:13px">Sin datos para comparar todavía.</div>'; return; }
+  let html='<table style="width:100%;min-width:520px;border-collapse:collapse"><thead><tr>'+
+    '<th style="text-align:left;padding:7px 10px;font-size:11.5px;color:var(--gris);border-bottom:1px solid var(--linea)">Labor</th>'+
+    '<th style="text-align:right;padding:7px 10px;font-size:11.5px;color:var(--gris);border-bottom:1px solid var(--linea)">Necesarios</th>'+
+    '<th style="text-align:right;padding:7px 10px;font-size:11.5px;color:var(--gris);border-bottom:1px solid var(--linea)">Asignados</th>'+
+    '<th style="text-align:right;padding:7px 10px;font-size:11.5px;color:var(--gris);border-bottom:1px solid var(--linea)">Huecos</th>'+
+    '<th style="text-align:left;padding:7px 10px;font-size:11.5px;color:var(--gris);border-bottom:1px solid var(--linea)">Estado</th></tr></thead><tbody>';
+  d.filas.forEach(f=>{
+    let estado="";
+    if(!f.planeado) estado='<span style="color:var(--ambar);font-weight:600">sin planear</span>';
+    else if(f.diferencia==null) estado='<span style="color:var(--gris)">—</span>';
+    else if(f.diferencia<0) estado=`<span style="color:var(--error);font-weight:600">faltan ${Math.abs(f.diferencia)}</span>`;
+    else if(f.huecos>0) estado=`<span style="color:var(--ambar);font-weight:600">${f.huecos} sin trabajador</span>`;
+    else estado='<span style="color:var(--verde);font-weight:600">ok</span>';
+    html+=`<tr>
+      <td style="padding:7px 10px;font-size:13px;border-bottom:1px solid #f4f3ec">${escapar((f.codigo?f.codigo+" · ":"")+f.nombre)}</td>
+      <td style="padding:7px 10px;font-size:13px;text-align:right;border-bottom:1px solid #f4f3ec;font-weight:700">${f.necesarios!=null?f.necesarios:'<small style="color:var(--gris)">—</small>'}</td>
+      <td style="padding:7px 10px;font-size:13px;text-align:right;border-bottom:1px solid #f4f3ec">${f.asignados}</td>
+      <td style="padding:7px 10px;font-size:13px;text-align:right;border-bottom:1px solid #f4f3ec">${f.huecos||0}</td>
+      <td style="padding:7px 10px;font-size:13px;border-bottom:1px solid #f4f3ec">${estado}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  cont.innerHTML=html;
+}
+
+let asigActual=null;
+function asignarTrab(asigId){
+  if(window._cerrada||!puedeEditar) return;
+  const a=agenda.asignaciones.find(x=>x.id===asigId);
+  if(!a) return;
+  asigActual=a;
+  const dia=agenda.dias.find(d=>d.fecha===a.fecha);
+  document.getElementById("contexto-trab").innerHTML=
+    `<strong>${escapar((a.labor_codigo?a.labor_codigo+" · ":"")+a.labor_nombre)}</strong> · ${escapar(a.lote_nombre||"")}<br>${dia?dia.dia_nombre+" "+dia.dia_num:""}`;
+  const st=document.getElementById("mt-trab");
+  st.innerHTML='<option value="">— sin asignar —</option>'+datos.trabajadores.map(t=>`<option value="${t.id}" ${t.id===a.trabajador_id?"selected":""}>${escapar(t.nombre)}</option>`).join("");
+  document.getElementById("mt-explica").value="";
+  document.getElementById("aviso-trab").className="aviso";
+  chequearHabTrab();
+  document.getElementById("modal-trab").classList.add("abierto");
+}
+function cerrarTrab(){ document.getElementById("modal-trab").classList.remove("abierto"); }
+function chequearHabTrab(){
+  const tId=parseInt(document.getElementById("mt-trab").value,10);
+  const av=document.getElementById("aviso-hab-trab");
+  if(tId&&asigActual){ const habs=datos.habilidades[tId]||[]; av.classList.toggle("ver",!habs.includes(asigActual.labor_id)); }
+  else av.classList.remove("ver");
+}
+async function guardarTrab(){
+  const btn=document.getElementById("btn-guardar-trab");
+  const trabId=document.getElementById("mt-trab").value?parseInt(document.getElementById("mt-trab").value,10):null;
+  const explica=document.getElementById("mt-explica").value.trim()||null;
+  btn.disabled=true;
+  const r=await fetch(`/api/plan/${asigActual.id}/trabajador`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({trabajador_id:trabId,explicacion:explica})});
+  btn.disabled=false;
+  if(r.ok){ cerrarTrab(); await cargar(); }
+  else { const d=await r.json(); document.getElementById("aviso-trab").textContent=d.error||"No se pudo asignar."; document.getElementById("aviso-trab").className="aviso error"; }
+}
+
+async function autoAsignar(){
+  if(!confirm("El sistema asignará trabajadores a los huecos: copiará lo de la semana anterior si existe, o agrupará lotes contiguos y asignará a quienes tengan la habilidad. Podrás ajustar todo después. ¿Continuar?")) return;
+  const r=await fetch(`/api/plan/${anio}/${semana}/auto-asignar`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({})});
+  const d=await r.json();
+  if(r.ok){ await cargar(); }
+}
+
+// ===== ARRASTRAR Y SOLTAR =====
+function toggleModo(){
+  modoArrastrar=!modoArrastrar;
+  const btn=document.getElementById("btn-modo");
+  btn.textContent = modoArrastrar ? "✋ Arrastrar: ON" : "✋ Arrastrar";
+  btn.classList.toggle("activo-modo", modoArrastrar);
+  document.getElementById("paleta").style.display = modoArrastrar ? "block" : "none";
+  if(modoArrastrar) pintarPaleta();
+  pintar();
+}
+
+function pintarPaleta(){
+  const cont=document.getElementById("paleta-cuerpo");
+  const tit=document.getElementById("paleta-titulo");
+  if(vista==="labor"){
+    tit.textContent="Trabajadores → arrastra a una celda";
+    // agrupar trabajadores por su labor (habilidad). Los sin labor: "Resto"
+    const grupos={}; const resto=[];
+    const laborNombre={};
+    datos.labores.forEach(l=>laborNombre[l.id]=(l.codigo?l.codigo+" · ":"")+l.nombre);
+    datos.trabajadores.forEach(t=>{
+      const habs=datos.habilidades[t.id]||[];
+      if(habs.length===0){ resto.push(t); }
+      else { habs.forEach(lid=>{ (grupos[lid]=grupos[lid]||[]).push(t); }); }
+    });
+    let html="";
+    Object.keys(grupos).forEach(lid=>{
+      html+=`<div style="font-size:11px;font-weight:700;color:var(--gris);margin:8px 4px 4px;text-transform:uppercase">${escapar(laborNombre[lid]||('Labor '+lid))}</div>`;
+      grupos[lid].forEach(t=>{ html+=itemPaleta("trab",t.id,t.nombre); });
+    });
+    if(resto.length){
+      html+=`<div style="font-size:11px;font-weight:700;color:var(--gris);margin:8px 4px 4px;text-transform:uppercase">Resto</div>`;
+      resto.forEach(t=>{ html+=itemPaleta("trab",t.id,t.nombre); });
+    }
+    cont.innerHTML=html||'<div style="padding:10px;color:var(--gris);font-size:12px">Sin trabajadores.</div>';
+  } else {
+    tit.textContent="Labores → arrastra a una celda";
+    let html="";
+    datos.labores.forEach(l=>{ html+=itemPaleta("labor",l.id,(l.codigo?l.codigo+" · ":"")+l.nombre); });
+    cont.innerHTML=html;
+  }
+}
+function itemPaleta(tipo,id,texto){
+  return `<div class="item-paleta" draggable="true" data-tipo="${tipo}" data-id="${id}" style="padding:6px 9px;margin:3px 2px;background:#f2f6f1;border:1px solid #dfe8db;border-radius:7px;font-size:12px;cursor:grab">${escapar(texto)}</div>`;
+}
+
+// arrastre: guardamos lo que se arrastra
+let arrastrando=null;
+document.addEventListener("dragstart",e=>{
+  const it=e.target.closest(".item-paleta");
+  if(!it){ return; }
+  arrastrando={tipo:it.getAttribute("data-tipo"), id:parseInt(it.getAttribute("data-id"),10)};
+  e.dataTransfer.effectAllowed="copy";
+});
+document.addEventListener("dragover",e=>{
+  if(!modoArrastrar||!arrastrando) return;
+  const td=e.target.closest("td.celda.droppable");
+  if(td){ e.preventDefault(); td.classList.add("drop-hover"); }
+});
+document.addEventListener("dragleave",e=>{
+  const td=e.target.closest("td.celda");
+  if(td) td.classList.remove("drop-hover");
+});
+document.addEventListener("drop",async e=>{
+  if(!modoArrastrar||!arrastrando) return;
+  const td=e.target.closest("td.celda.droppable");
+  if(!td){ return; }
+  e.preventDefault(); td.classList.remove("drop-hover");
+  const fecha=td.getAttribute("data-fecha");
+  const modo=td.getAttribute("data-modo");
+  if(modo==="labor" && arrastrando.tipo==="trab"){
+    // celda ya tiene labor y lote; falta el trabajador
+    const laborId=parseInt(td.getAttribute("data-labor"),10);
+    const loteId=td.getAttribute("data-lote")?parseInt(td.getAttribute("data-lote"),10):null;
+    if(!loteId){ // fila "sin asignar": pedir lote
+      abrir(fecha,'labor',laborId,null); arrastrando=null; return;
+    }
+    await crearAsignacion({labor_id:laborId,lote_id:loteId,trabajador_id:arrastrando.id,fecha});
+  } else if(modo==="trabajador" && arrastrando.tipo==="labor"){
+    // celda tiene trabajador; falta lote -> mini selector
+    const trabId=parseInt(td.getAttribute("data-trab"),10);
+    abrirSelectorLote(arrastrando.id, trabId, fecha);
+  }
+  arrastrando=null;
+});
+
+async function crearAsignacion(body){
+  const r=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(r.ok) await cargar();
+}
+
+// mini selector de lote al arrastrar una labor sobre un trabajador
+let pendienteLote=null;
+function abrirSelectorLote(laborId, trabId, fecha){
+  pendienteLote={laborId,trabId,fecha};
+  const sel=document.getElementById("sl-lote");
+  sel.innerHTML='<option value="">— elige lote —</option>'+datos.lotes.map(l=>`<option value="${l.id}">${escapar(l.nombre)}</option>`).join("");
+  document.getElementById("modal-lote").classList.add("abierto");
+}
+function cerrarSelectorLote(){ document.getElementById("modal-lote").classList.remove("abierto"); pendienteLote=null; }
+async function confirmarSelectorLote(){
+  const loteId=parseInt(document.getElementById("sl-lote").value,10);
+  if(!loteId) return;
+  if(pendienteLote){
+    await crearAsignacion({labor_id:pendienteLote.laborId,lote_id:loteId,trabajador_id:pendienteLote.trabId,fecha:pendienteLote.fecha});
+  }
+  cerrarSelectorLote();
+}
+
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+init();
+</script>
+<script>
+// Campanita de pendientes (inyectada en todas las paginas)
+(function(){
+  function crearCampanita(){
+    const nav=document.querySelector("header nav");
+    if(!nav) return;
+    const a=document.createElement("a");
+    a.href="/pendientes.html";
+    a.title="Centro de pendientes";
+    a.style.cssText="position:relative;display:inline-flex;align-items:center;gap:4px";
+    a.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="camp-rojo" style="display:none;background:#a4443a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span><span id="camp-azul" style="display:none;background:#2c5866;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span>';
+    nav.appendChild(a);
+    actualizarCampanita();
+    setInterval(actualizarCampanita, 60000); // refresca cada minuto
+  }
+  async function actualizarCampanita(){
+    try{
+      const r=await fetch("/api/pendientes/contadores");
+      if(!r.ok) return;
+      const d=await r.json();
+      const rojo=document.getElementById("camp-rojo"), azul=document.getElementById("camp-azul");
+      if(rojo){ if(d.por_resolver>0){ rojo.textContent=d.por_resolver; rojo.style.display="inline-block"; } else rojo.style.display="none"; }
+      if(azul){ if(d.por_leer>0){ azul.textContent=d.por_leer; azul.style.display="inline-block"; } else azul.style.display="none"; }
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",crearCampanita);
+  else crearCampanita();
+})();
+</script>
+
+</body>
+</html>

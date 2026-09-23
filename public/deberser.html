@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Deber ser</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;--ambar:#8a6d1b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}.marca .hoja{width:22px;height:22px;color:#a9c9b2}.marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .contenedor{max-width:1050px;margin:0 auto;padding:32px 24px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}.sub{color:var(--gris);font-size:14px;margin-bottom:18px}
+  .resumen{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+  .tarjeta{background:#fff;border:1px solid var(--linea);border-radius:11px;padding:13px 17px;flex:1;min-width:130px}
+  .tarjeta .n{font-size:20px;font-weight:700;color:var(--verde-hondo)}.tarjeta .t{font-size:12px;color:var(--gris)}
+  .explica{background:#eef2ea;border:1px solid #d5e0d2;border-radius:9px;padding:12px 15px;font-size:13px;color:#3a5a44;margin-bottom:18px}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:800px}
+  th{background:#f2f1e8;text-align:left;padding:11px 13px;font-size:11.5px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea);white-space:nowrap}
+  td{padding:10px 13px;font-size:13px;border-bottom:1px solid #f4f3ec;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .num{font-variant-numeric:tabular-nums;text-align:right}
+  .nec{font-weight:700;color:var(--verde-hondo)}
+  .dif-pos{color:var(--verde);font-weight:600}
+  .dif-neg{color:var(--error);font-weight:600}
+  .sin-calc{color:var(--ambar);font-size:12px}
+  .badge-racimo{background:#e6eef0;color:#2c5866;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:600}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+  small.dato{color:var(--gris);font-size:11px}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/></svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+      <a href="/planificador.html">Planificador</a>
+      <a href="/deberser.html" class="activo">Deber ser</a>
+      <a href="/jornada.html">Jornada</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual"><span id="quien"></span><button class="salir" onclick="salir()">Salir</button></div>
+  </header>
+  <div class="contenedor">
+    <h1>Deber ser — mano de obra necesaria</h1>
+    <p class="sub">Cuántos trabajadores necesita cada labor según los rendimientos, el área de la finca y el embolse real. Es una referencia para comparar contra lo que tienes.</p>
+
+    <div class="resumen" id="resumen"></div>
+    <div class="explica" id="explica"></div>
+
+    <div id="cargando" class="cargando">Cargando…</div>
+    <div class="tabla-caja" id="caja" style="display:none">
+      <table>
+        <thead><tr><th>Cód.</th><th>Labor</th><th>Base de cálculo</th><th>Rend./día</th><th>Necesarios</th><th>Asignados</th><th>Diferencia</th></tr></thead>
+        <tbody id="cuerpo"></tbody>
+      </table>
+    </div>
+  </div>
+<script>
+async function init(){
+  const rme=await fetch("/api/me"); if(!rme.ok){window.location.href="/";return;}
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  if(me.rol==="administrador") document.getElementById("nav-usuarios").style.display="inline-block";
+    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+  await cargar();
+}
+async function cargar(){
+  const r=await fetch("/api/deber-ser"); const d=await r.json();
+  document.getElementById("resumen").innerHTML=`
+    <div class="tarjeta"><div class="n">${d.ha_total} ha</div><div class="t">Área activa</div></div>
+    <div class="tarjeta"><div class="n">${Number(d.plantas_total).toLocaleString('es-CO')}</div><div class="t">Plantas (lotes activos)</div></div>
+    <div class="tarjeta"><div class="n">${Number(d.racimos_semana).toLocaleString('es-CO')}</div><div class="t">Racimos/sem (embolse real)</div></div>
+    <div class="tarjeta"><div class="n">${d.horas_dia_promedio} h</div><div class="t">Jornada diaria</div></div>`;
+  let ex="Cómo se calcula: para labores por planta (chapia, fumigación) se usan todas las plantas de los lotes activos. Para labores ligadas al racimo (embolse, desmane, amarre) se usa el embolse real —promedio de las últimas 4 semanas capturadas—. El resultado se divide entre la jornada y la frecuencia de la labor.";
+  if(!d.hay_embolse) ex+=" ⚠ Aún no hay semanas de embolse capturadas, así que las labores por racimo no se pueden calcular todavía.";
+  document.getElementById("explica").textContent=ex;
+
+  const tb=document.getElementById("cuerpo"); tb.innerHTML="";
+  d.labores.forEach(l=>{
+    const tr=document.createElement("tr");
+    if(!l.calculable){
+      tr.innerHTML=`
+        <td><strong>${l.codigo?escapar(l.codigo):"—"}</strong></td>
+        <td>${escapar(l.nombre)}</td>
+        <td colspan="5"><span class="sin-calc">${escapar(l.mensaje||"No calculable")}</span></td>`;
+    } else {
+      const esRacimo=(l.base_unidad||"").includes("racimo");
+      let dif="—";
+      if(l.diferencia!=null){
+        if(l.diferencia>=0) dif=`<span class="dif-pos">+${l.diferencia} (sobra)</span>`;
+        else dif=`<span class="dif-neg">${l.diferencia} (falta)</span>`;
+      }
+      tr.innerHTML=`
+        <td><strong>${l.codigo?escapar(l.codigo):"—"}</strong></td>
+        <td>${escapar(l.nombre)}${esRacimo?' <span class="badge-racimo">racimo</span>':''}</td>
+        <td>${Number(l.trabajo_total).toLocaleString('es-CO')} <small class="dato">${escapar(l.base_unidad)}</small></td>
+        <td class="num">${Number(l.rend_dia).toLocaleString('es-CO')}</td>
+        <td class="num nec">${l.trabajadores_necesarios}</td>
+        <td class="num">${l.asignados}</td>
+        <td>${dif}</td>`;
+    }
+    tb.appendChild(tr);
+  });
+  document.getElementById("cargando").style.display="none";
+  document.getElementById("caja").style.display="block";
+}
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+init();
+</script>
+<script>
+// Campanita de pendientes (inyectada en todas las paginas)
+(function(){
+  function crearCampanita(){
+    const nav=document.querySelector("header nav");
+    if(!nav) return;
+    const a=document.createElement("a");
+    a.href="/pendientes.html";
+    a.title="Centro de pendientes";
+    a.style.cssText="position:relative;display:inline-flex;align-items:center;gap:4px";
+    a.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="camp-rojo" style="display:none;background:#a4443a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span><span id="camp-azul" style="display:none;background:#2c5866;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span>';
+    nav.appendChild(a);
+    actualizarCampanita();
+    setInterval(actualizarCampanita, 60000); // refresca cada minuto
+  }
+  async function actualizarCampanita(){
+    try{
+      const r=await fetch("/api/pendientes/contadores");
+      if(!r.ok) return;
+      const d=await r.json();
+      const rojo=document.getElementById("camp-rojo"), azul=document.getElementById("camp-azul");
+      if(rojo){ if(d.por_resolver>0){ rojo.textContent=d.por_resolver; rojo.style.display="inline-block"; } else rojo.style.display="none"; }
+      if(azul){ if(d.por_leer>0){ azul.textContent=d.por_leer; azul.style.display="inline-block"; } else azul.style.display="none"; }
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",crearCampanita);
+  else crearCampanita();
+})();
+</script>
+
+</body>
+</html>

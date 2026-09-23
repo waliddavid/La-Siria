@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Siria — Reporte de labores</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;--ambar:#8a6d1b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}
+  nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}
+  nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .salir:hover{background:rgba(255,255,255,.2)}
+  .contenedor{max-width:1150px;margin:0 auto;padding:28px 24px}
+  h1{font-size:23px;font-weight:650;color:var(--verde-hondo)}
+  .sub{color:var(--gris);font-size:14px;margin-bottom:18px}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+  .barra-fecha{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap;background:#fff;border:1px solid var(--linea);border-radius:11px;padding:14px 18px}
+  .barra-fecha label{font-size:13px;font-weight:600}
+  .barra-fecha input{padding:9px 12px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px}
+  .info-dia{font-size:13px;color:var(--gris)}
+  .info-dia .festivo{color:var(--error);font-weight:600}
+  .info-dia .finde{color:var(--ambar);font-weight:600}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:visible}
+  .planilla{width:100%;border-collapse:collapse}
+  .planilla th{background:#f2f1e8;text-align:left;padding:10px 10px;font-size:11.5px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea);white-space:nowrap}
+  .planilla td{padding:7px 8px;border-bottom:1px solid #f4f3ec;vertical-align:top}
+  .planilla tr:last-child td{border-bottom:none}
+  .planilla select, .planilla input{width:100%;padding:8px 8px;border:1.5px solid var(--linea);border-radius:7px;font-size:13px;background:#fff}
+  .planilla select:focus,.planilla input:focus{outline:none;border-color:var(--verde-claro)}
+  .col-trab{min-width:150px}.col-labor{min-width:160px}.col-lote{min-width:110px}
+  .col-cant{width:90px}.col-hora{width:80px}.col-rend{width:120px}
+  .rend-info{font-size:11.5px;color:var(--gris);padding-top:6px}
+  .rend-info.bajo{color:var(--error);font-weight:600}
+  .rend-info.ok{color:var(--verde)}
+  .aviso-hab{font-size:11px;color:var(--ambar);padding-top:3px;display:none}
+  .aviso-hab.ver{display:block}
+  .fila-expl{display:none}
+  .fila-expl.ver{display:table-row;background:#fbf4f3}
+  .fila-expl td{padding:4px 10px 10px 10px}
+  .fila-expl input{width:100%;border-color:#e6c9c5}
+  .fila-expl label{font-size:11.5px;color:var(--error);font-weight:600;display:block;margin-bottom:3px}
+  .quitar-fila{background:none;border:1px solid var(--linea);border-radius:7px;padding:6px 9px;cursor:pointer;color:var(--error);font-size:13px}
+  .quitar-fila:hover{border-color:var(--error)}
+  .pie-planilla{padding:14px 18px;border-top:1px solid var(--linea);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#fafaf5}
+  .boton{background:var(--verde);color:#fff;border:none;padding:11px 20px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .boton.sec{background:#fff;color:var(--verde);border:1.5px solid var(--verde-claro)}
+  .boton.sec:hover{background:#f0f4ef}
+  .aviso{padding:11px 14px;border-radius:9px;font-size:13.5px;margin-bottom:16px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+  .aviso.ok{background:#e9f1e7;color:var(--verde);border:1px solid #cfe0ca;display:block}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+  .seccion-tit{font-size:15px;font-weight:650;color:var(--verde-hondo);margin:26px 0 10px}
+  .reciente{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;overflow-x:auto}
+  .reciente table{width:100%;border-collapse:collapse;min-width:700px}
+  .reciente th{background:#f2f1e8;text-align:left;padding:10px 14px;font-size:11.5px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea)}
+  .reciente td{padding:9px 14px;font-size:13px;border-bottom:1px solid #f4f3ec}
+  .badge-bajo{background:#f3e0dd;color:var(--error);padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .badge-sinhab{background:#fbf1d9;color:var(--ambar);padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html" class="activo">Reporte</a>
+      <a href="/planificador.html">Planificador</a>
+      <a href="/deberser.html">Deber ser</a>
+      <a href="/jornada.html">Jornada</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/asignacion.html">Asignación</a>
+      <a href="/materiales.html">Materiales</a>
+      <a href="/almacen.html">Almacén</a>
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html">Nómina</a>
+      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
+      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
+    </nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <h1>Reporte diario de labores</h1>
+    <p class="sub">Registra el trabajo del día: quién hizo qué labor, en qué lote, cuánto y en qué horario. El rendimiento se calcula solo.</p>
+
+    <div id="nota-permiso" class="nota-permiso" style="display:none">
+      Solo los coordinadores y el administrador capturan reportes.
+    </div>
+    <div id="aviso" class="aviso"></div>
+
+    <div id="cargando" class="cargando">Cargando…</div>
+
+    <div id="contenido" style="display:none">
+      <div class="barra-fecha">
+        <div><label for="fecha">Fecha del trabajo</label><br><input type="date" id="fecha" onchange="cambioFecha()"></div>
+        <div class="info-dia" id="info-dia"></div>
+      </div>
+
+      <div class="tabla-caja">
+        <table class="planilla">
+          <thead>
+            <tr>
+              <th class="col-trab">Trabajador</th>
+              <th class="col-labor">Labor</th>
+              <th class="col-lote">Lote</th>
+              <th class="col-cant">Cantidad</th>
+              <th class="col-hora">Inicio</th>
+              <th class="col-hora">Fin</th>
+              <th class="col-rend">Rendimiento</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="filas"></tbody>
+        </table>
+        <div class="pie-planilla">
+          <button class="boton sec" onclick="agregarFila()">+ Agregar trabajador</button>
+          <button class="boton" id="btn-guardar" onclick="guardar()">Guardar reporte del día</button>
+        </div>
+      </div>
+
+      <div class="seccion-tit">Reportes de hoy</div>
+      <div class="reciente">
+        <table>
+          <thead><tr><th>Trabajador</th><th>Labor</th><th>Lote</th><th>Cant.</th><th>Horas</th><th>Rendimiento</th><th>Notas</th></tr></thead>
+          <tbody id="recientes"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+let datos={trabajadores:[],labores:[],lotes:[],habilidades:{},mis_lotes:[],soy_coordinador:false};
+let festivos=new Set();
+let filaSeq=0;
+
+async function init(){
+  const rme=await fetch("/api/me");
+  if(!rme.ok){ window.location.href="/"; return; }
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  if(me.rol==="administrador") document.getElementById("nav-usuarios").style.display="inline-block";
+    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+
+  const r=await fetch("/api/reporte/datos");
+  if(r.status===403){
+    document.getElementById("cargando").style.display="none";
+    document.getElementById("nota-permiso").style.display="block";
+    return;
+  }
+  datos=await r.json();
+  // fecha por defecto = hoy
+  const hoy=new Date().toISOString().slice(0,10);
+  document.getElementById("fecha").value=hoy;
+  await cargarFestivosAnio(hoy.slice(0,4));
+  cambioFecha();
+  agregarFila();
+  await cargarRecientes(hoy);
+  document.getElementById("cargando").style.display="none";
+  document.getElementById("contenido").style.display="block";
+}
+
+async function cargarFestivosAnio(anio){
+  try{
+    const r=await fetch(`/api/festivos/${anio}`);
+    if(r.ok){ const d=await r.json(); festivos=new Set(d.festivos.map(f=>f.fecha)); }
+  }catch(e){}
+}
+
+function cambioFecha(){
+  const f=document.getElementById("fecha").value;
+  const info=document.getElementById("info-dia");
+  if(!f){ info.innerHTML=""; return; }
+  const d=new Date(f+"T12:00:00");
+  const dias=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  let txt=`${dias[d.getDay()]}`;
+  if(festivos.has(f)) txt+=` · <span class="festivo">Día festivo</span>`;
+  else if(d.getDay()===0) txt+=` · <span class="festivo">Domingo</span>`;
+  else if(d.getDay()===6) txt+=` · <span class="finde">Sábado</span>`;
+  info.innerHTML=txt;
+}
+
+function agregarFila(){
+  const id=++filaSeq;
+  const tbody=document.getElementById("filas");
+  const tr=document.createElement("tr");
+  tr.id="fila-"+id;
+  // opciones
+  const optTrab=['<option value="">—</option>'].concat(datos.trabajadores.map(t=>`<option value="${t.id}">${escapar(t.nombre)}</option>`)).join("");
+  const optLabor=['<option value="">—</option>'].concat(datos.labores.map(l=>`<option value="${l.id}">${escapar((l.codigo?l.codigo+" · ":"")+l.nombre)}</option>`)).join("");
+  // lotes: si soy coordinador, primero los mios
+  let lotesOrd=datos.lotes;
+  if(datos.soy_coordinador){
+    const mset=new Set(datos.mis_lotes);
+    lotesOrd=[...datos.lotes].sort((a,b)=>(mset.has(b.id)?1:0)-(mset.has(a.id)?1:0));
+  }
+  const optLote=['<option value="">—</option>'].concat(lotesOrd.map(l=>`<option value="${l.id}">${escapar(l.nombre)}${datos.soy_coordinador&&datos.mis_lotes.includes(l.id)?" ★":""}</option>`)).join("");
+
+  tr.innerHTML=`
+    <td class="col-trab"><select onchange="chequear(${id})" id="t-${id}">${optTrab}</select>
+      <div class="aviso-hab" id="hab-${id}">⚠ Este trabajador no tiene esa labor entre sus habilidades.</div></td>
+    <td class="col-labor"><select onchange="chequear(${id})" id="l-${id}">${optLabor}</select></td>
+    <td class="col-lote"><select id="lo-${id}">${optLote}</select></td>
+    <td class="col-cant"><input type="number" step="0.01" id="c-${id}" oninput="calcRend(${id})" placeholder="0"></td>
+    <td class="col-hora"><input type="time" id="hi-${id}" oninput="calcRend(${id})"></td>
+    <td class="col-hora"><input type="time" id="hf-${id}" oninput="calcRend(${id})"></td>
+    <td class="col-rend"><div class="rend-info" id="r-${id}">—</div></td>
+    <td><button class="quitar-fila" onclick="quitarFila(${id})">✕</button></td>`;
+  tbody.appendChild(tr);
+  // fila de explicacion (oculta hasta que rinda bajo)
+  const trE=document.createElement("tr");
+  trE.className="fila-expl"; trE.id="expl-"+id;
+  trE.innerHTML=`<td colspan="8"><label>El rendimiento fue menor al estándar. Explica por qué:</label><input type="text" id="e-${id}" placeholder="Ej: terreno encharcado, herramienta dañada, capacitación..."></td>`;
+  tbody.appendChild(trE);
+}
+
+function quitarFila(id){
+  document.getElementById("fila-"+id)?.remove();
+  document.getElementById("expl-"+id)?.remove();
+}
+
+function chequear(id){
+  // aviso de habilidad
+  const tId=parseInt(document.getElementById("t-"+id).value,10);
+  const lId=parseInt(document.getElementById("l-"+id).value,10);
+  const aviso=document.getElementById("hab-"+id);
+  if(tId && lId){
+    const habs=datos.habilidades[tId]||[];
+    if(!habs.includes(lId)) aviso.classList.add("ver");
+    else aviso.classList.remove("ver");
+  } else aviso.classList.remove("ver");
+  calcRend(id);
+}
+
+function calcRend(id){
+  const lId=parseInt(document.getElementById("l-"+id).value,10);
+  const cant=parseFloat(document.getElementById("c-"+id).value);
+  const hi=document.getElementById("hi-"+id).value;
+  const hf=document.getElementById("hf-"+id).value;
+  const rendDiv=document.getElementById("r-"+id);
+  const filaExpl=document.getElementById("expl-"+id);
+
+  const horas=calcHoras(hi,hf);
+  if(!lId || !cant || !horas){ rendDiv.textContent="—"; rendDiv.className="rend-info"; filaExpl.classList.remove("ver"); return; }
+  const labor=datos.labores.find(l=>l.id===lId);
+  const rend=cant/horas;
+  const uni=labor&&labor.unidad_rendimiento?labor.unidad_rendimiento.toLowerCase():"";
+  let txt=`${rend.toFixed(1)} ${uni}`;
+  const est=labor?labor.rendimiento_estandar:null;
+  if(est!=null){
+    if(rend<est){ rendDiv.className="rend-info bajo"; txt+=` (bajo · est. ${est})`; filaExpl.classList.add("ver"); }
+    else { rendDiv.className="rend-info ok"; txt+=` (ok · est. ${est})`; filaExpl.classList.remove("ver"); }
+  } else { rendDiv.className="rend-info"; txt+=" (sin estándar)"; filaExpl.classList.remove("ver"); }
+  rendDiv.textContent=txt;
+}
+
+function calcHoras(ini,fin){
+  if(!ini||!fin) return null;
+  const [h1,m1]=ini.split(":").map(Number);
+  const [h2,m2]=fin.split(":").map(Number);
+  let mins=(h2*60+m2)-(h1*60+m1);
+  if(mins<=0) return null;
+  return Math.round(mins/60*100)/100;
+}
+
+async function guardar(){
+  const btn=document.getElementById("btn-guardar"), aviso=document.getElementById("aviso");
+  const fecha=document.getElementById("fecha").value;
+  if(!fecha){ aviso.className="aviso error"; aviso.textContent="Elige la fecha del reporte."; return; }
+  // recoger filas
+  const lineas=[];
+  document.querySelectorAll("#filas tr[id^='fila-']").forEach(tr=>{
+    const id=tr.id.split("-")[1];
+    const t=document.getElementById("t-"+id).value;
+    const l=document.getElementById("l-"+id).value;
+    const lo=document.getElementById("lo-"+id).value;
+    if(!t&&!l&&!lo) return; // fila vacia, ignorar
+    const tId=parseInt(t,10), lId=parseInt(l,10);
+    const habs=datos.habilidades[tId]||[];
+    lineas.push({
+      trabajador_id:tId||null, labor_id:lId||null, lote_id:parseInt(lo,10)||null,
+      cantidad_ejecutada:parseFloat(document.getElementById("c-"+id).value)||null,
+      hora_inicio:document.getElementById("hi-"+id).value||null,
+      hora_fin:document.getElementById("hf-"+id).value||null,
+      explicacion:document.getElementById("e-"+id).value||null,
+      sin_habilidad:(tId&&lId&&!habs.includes(lId))?1:0
+    });
+  });
+  if(lineas.length===0){ aviso.className="aviso error"; aviso.textContent="Agrega al menos un trabajador."; return; }
+
+  btn.disabled=true;
+  const r=await fetch("/api/reporte",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fecha,lineas})});
+  const d=await r.json(); btn.disabled=false;
+  if(!r.ok){ aviso.className="aviso error"; aviso.textContent=d.error||"No se pudo guardar."; return; }
+  if(d.errores&&d.errores.length){
+    aviso.className="aviso error";
+    aviso.innerHTML=`Se guardaron ${d.guardadas}. Revisa: <br>`+d.errores.map(escapar).join("<br>");
+  } else {
+    aviso.className="aviso ok";
+    aviso.textContent=`Reporte guardado: ${d.guardadas} línea(s).`;
+    // limpiar planilla
+    document.getElementById("filas").innerHTML=""; agregarFila();
+  }
+  await cargarRecientes(fecha);
+}
+
+async function cargarRecientes(fecha){
+  const r=await fetch("/api/reporte?fecha="+encodeURIComponent(fecha));
+  if(!r.ok) return;
+  const d=await r.json();
+  const tb=document.getElementById("recientes"); tb.innerHTML="";
+  if(d.reportes.length===0){ tb.innerHTML='<tr><td colspan="7" style="color:var(--gris);text-align:center;padding:20px">Sin reportes para esta fecha.</td></tr>'; return; }
+  d.reportes.forEach(x=>{
+    const uni=x.unidad_rendimiento?x.unidad_rendimiento.toLowerCase():"";
+    let notas="";
+    if(x.bajo_estandar) notas+='<span class="badge-bajo">bajo estándar</span> ';
+    if(x.sin_habilidad) notas+='<span class="badge-sinhab">sin habilidad</span>';
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${escapar(x.trabajador)}</td>
+      <td>${escapar((x.labor_codigo?x.labor_codigo+" · ":"")+x.labor)}</td>
+      <td>${escapar(x.lote)}</td>
+      <td>${x.cantidad_ejecutada??"—"}</td>
+      <td>${x.horas_trabajadas??"—"}</td>
+      <td>${x.rendimiento_real!=null?x.rendimiento_real.toFixed(1)+" "+uni:"—"}</td>
+      <td>${notas||"—"}${x.explicacion?`<br><small style="color:var(--gris)">${escapar(x.explicacion)}</small>`:""}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+init();
+</script>
+<script>
+// Campanita de pendientes (inyectada en todas las paginas)
+(function(){
+  function crearCampanita(){
+    const nav=document.querySelector("header nav");
+    if(!nav) return;
+    const a=document.createElement("a");
+    a.href="/pendientes.html";
+    a.title="Centro de pendientes";
+    a.style.cssText="position:relative;display:inline-flex;align-items:center;gap:4px";
+    a.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="camp-rojo" style="display:none;background:#a4443a;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span><span id="camp-azul" style="display:none;background:#2c5866;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;min-width:16px;text-align:center"></span>';
+    nav.appendChild(a);
+    actualizarCampanita();
+    setInterval(actualizarCampanita, 60000); // refresca cada minuto
+  }
+  async function actualizarCampanita(){
+    try{
+      const r=await fetch("/api/pendientes/contadores");
+      if(!r.ok) return;
+      const d=await r.json();
+      const rojo=document.getElementById("camp-rojo"), azul=document.getElementById("camp-azul");
+      if(rojo){ if(d.por_resolver>0){ rojo.textContent=d.por_resolver; rojo.style.display="inline-block"; } else rojo.style.display="none"; }
+      if(azul){ if(d.por_leer>0){ azul.textContent=d.por_leer; azul.style.display="inline-block"; } else azul.style.display="none"; }
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",crearCampanita);
+  else crearCampanita();
+})();
+</script>
+
+</body>
+</html>
