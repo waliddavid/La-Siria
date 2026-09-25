@@ -38,6 +38,16 @@
   .accion:hover{border-color:var(--verde-claro)}
   .cargando{padding:40px;text-align:center;color:var(--gris)}
   .vacio{padding:40px;text-align:center;color:var(--gris)}
+
+nav.menu{display:flex;gap:2px;align-items:flex-start}
+.grupo{position:relative}
+.grupo-titulo{display:block;padding:7px 11px;font-size:12.5px;font-weight:600;color:#cddbd0;cursor:pointer;border-radius:6px;white-space:nowrap}
+.grupo-titulo:hover,.grupo.abierto .grupo-titulo{background:rgba(255,255,255,.14);color:#fff}
+.submenu{display:none;position:absolute;top:100%;left:0;min-width:205px;background:#fff;border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.25);padding:6px;z-index:60}
+.grupo:hover .submenu,.grupo.abierto .submenu{display:block}
+.submenu a{display:block;padding:8px 12px;border-radius:6px;color:#2c4a33;font-size:13px;white-space:nowrap}
+.submenu a:hover{background:#eef4ee;color:#1d3a24}
+.submenu a.activo{background:var(--verde);color:#fff;font-weight:700}
 </style>
 </head>
 <body>
@@ -46,15 +56,52 @@
       <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/></svg>
       <span>Finca La Siria</span>
     </div>
-    <nav>
+    <nav class="menu">
+  <div class="grupo">
+    <span class="grupo-titulo">Operaciones</span>
+    <div class="submenu">
       <a href="/dashboard.html">Dashboard</a>
       <a href="/reporte.html">Reporte</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Planeación</span>
+    <div class="submenu">
       <a href="/planificador.html">Planificador</a>
-      <a href="/almacen.html">Almacén</a>
-      <a href="/pendientes.html" class="activo">Pendientes</a>
-      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
-      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
-    </nav>
+      <a href="/asignacion.html">Asignación Coordinadores</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/deberser.html">Deber ser</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Recursos Humanos</span>
+    <div class="submenu">
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/jornada.html">Jornada Laboral</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html">Nómina</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Almacén</span>
+    <div class="submenu">
+      <a href="/almacen.html">Materiales</a>
+      <a href="/almacen.html?tipo=repuesto">Repuestos</a>
+      <a href="/herramientas.html">Herramientas</a>
+      <a href="/equipos.html">Equipos</a>
+    </div>
+  </div>
+  <div class="grupo" id="nav-grupo-admin" style="display:none">
+    <span class="grupo-titulo">Configuración</span>
+    <div class="submenu">
+      <a href="/configuracion.html">Configuración</a>
+      <a href="/usuarios.html">Usuarios</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/ubicaciones.html">Ubicaciones</a>
+      <a href="/materiales.html">Catálogo de materiales</a>
+    </div>
+  </div>
+</nav>
     <div class="usuario-actual"><span id="quien"></span><button class="salir" onclick="salir()">Salir</button></div>
   </header>
   <div class="contenedor">
@@ -78,8 +125,8 @@ async function init(){
   const me=await rme.json();
   document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
   esAdmin=(me.rol==="administrador");
-  if(esAdmin){ document.getElementById("nav-usuarios").style.display="inline-block";
-    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block"; document.getElementById("f-admin").style.display="inline-block"; }
+  if(esAdmin){ const nga=document.getElementById("nav-grupo-admin"); if(nga) nga.style.display="flex";
+     document.getElementById("f-admin").style.display="inline-block"; }
   await cargar();
 }
 function setFiltro(f){
@@ -186,6 +233,16 @@ async function marcarLeido(id){
 async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
 function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 init();
+</script>
+<script>
+(function(){
+  function cerrarTodos(excepto){document.querySelectorAll('.grupo.abierto').forEach(g=>{if(g!==excepto)g.classList.remove('abierto')});}
+  document.addEventListener('click',function(e){
+    const t=e.target.closest('.grupo-titulo');
+    if(t){const g=t.parentElement;const ab=g.classList.contains('abierto');cerrarTodos(g);g.classList.toggle('abierto',!ab);}
+    else cerrarTodos(null);
+  });
+})();
 </script>
 </body>
 </html>

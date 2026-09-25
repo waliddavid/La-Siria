@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ubicaciones — La Siria</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;--ambar:#8a6d1b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}
+  nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}
+  nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .contenedor{max-width:1100px;margin:0 auto;padding:28px 24px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}
+  .sub{color:var(--gris);font-size:14px;margin-bottom:18px}
+  .tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--linea)}
+  .tab{padding:10px 18px;border:none;background:none;font-size:14px;font-weight:600;color:var(--gris);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+  .tab.activa{color:var(--verde-hondo);border-bottom-color:var(--verde)}
+  .panel{display:none}.panel.activo{display:block}
+  .barra{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .barra input,.barra select{padding:9px 12px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  .barra input.buscar{flex:1;min-width:200px}
+  .boton{background:var(--verde);color:#fff;border:none;padding:10px 16px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .boton.sec{background:#fff;color:var(--verde);border:1.5px solid var(--verde-claro)}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:640px}
+  th{background:#f2f1e8;text-align:left;padding:11px 14px;font-size:11.5px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea);white-space:nowrap}
+  td{padding:10px 14px;font-size:13px;border-bottom:1px solid #f4f3ec}
+  tr:last-child td{border-bottom:none}
+  .num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .existencia{font-weight:700}
+  .existencia.cero{color:var(--gris);font-weight:400}
+  .bajo-stock{color:var(--error);font-weight:600;font-size:11px}
+  .accion{background:none;border:1px solid var(--linea);border-radius:7px;padding:6px 10px;font-size:12.5px;cursor:pointer;color:var(--tinta);margin-right:4px}
+  .accion:hover{border-color:var(--verde-claro)}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+  small.dato{color:var(--gris);font-size:11px}
+  .alerta-banner{background:#f6e6e4;border:1px solid #e6c9c5;color:var(--error);padding:11px 15px;border-radius:9px;font-size:13.5px;margin-bottom:16px;display:none}
+  .alerta-banner.ver{display:block}
+  /* modales */
+  .modal-fondo{display:none;position:fixed;inset:0;background:rgba(29,59,42,.5);align-items:flex-start;justify-content:center;padding:24px;z-index:10;overflow:auto}
+  .modal-fondo.abierto{display:flex}
+  .modal{background:var(--crema);border-radius:14px;width:100%;max-width:500px;box-shadow:0 24px 60px rgba(0,0,0,.3);margin:auto}
+  .modal-cab{padding:20px 26px 12px;border-bottom:1px solid var(--linea)}
+  .modal-cab h2{font-size:18px;color:var(--verde-hondo);font-weight:650}
+  .modal-cuerpo{padding:18px 26px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .campo{margin-bottom:13px}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  input,select{width:100%;padding:9px 11px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .verif-caja{background:#fbf6e5;border:1px solid #ecdfae;border-radius:9px;padding:12px 14px;margin:12px 0;font-size:13px}
+  .verif-caja .exist{font-size:16px;font-weight:700;color:var(--verde-hondo)}
+  .modal-pie{padding:14px 26px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end}
+  .btn-sec{background:none;border:1px solid var(--linea);color:var(--tinta);padding:9px 15px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .aviso{padding:10px 13px;border-radius:8px;font-size:13.5px;margin-bottom:14px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+  .aviso.warn{background:#fbf6e5;color:var(--ambar);border:1px solid #ecdfae;display:block}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+  .capa-row{font-size:12.5px;padding:5px 0;border-bottom:1px solid #f0efe6;display:flex;justify-content:space-between}
+
+nav.menu{display:flex;gap:2px;align-items:flex-start}
+.grupo{position:relative}
+.grupo-titulo{display:block;padding:7px 11px;font-size:12.5px;font-weight:600;color:#cddbd0;cursor:pointer;border-radius:6px;white-space:nowrap}
+.grupo-titulo:hover,.grupo.abierto .grupo-titulo{background:rgba(255,255,255,.14);color:#fff}
+.submenu{display:none;position:absolute;top:100%;left:0;min-width:205px;background:#fff;border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.25);padding:6px;z-index:60}
+.grupo:hover .submenu,.grupo.abierto .submenu{display:block}
+.submenu a{display:block;padding:8px 12px;border-radius:6px;color:#2c4a33;font-size:13px;white-space:nowrap}
+.submenu a:hover{background:#eef4ee;color:#1d3a24}
+.submenu a.activo{background:var(--verde);color:#fff;font-weight:700}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+<nav class="menu">
+  <div class="grupo">
+    <span class="grupo-titulo">Operaciones</span>
+    <div class="submenu">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Planeación</span>
+    <div class="submenu">
+      <a href="/planificador.html">Planificador</a>
+      <a href="/asignacion.html">Asignación Coordinadores</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/deberser.html">Deber ser</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Recursos Humanos</span>
+    <div class="submenu">
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/jornada.html">Jornada Laboral</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html">Nómina</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Almacén</span>
+    <div class="submenu">
+      <a href="/almacen.html">Materiales</a>
+      <a href="/almacen.html?tipo=repuesto">Repuestos</a>
+      <a href="/herramientas.html">Herramientas</a>
+      <a href="/equipos.html">Equipos</a>
+    </div>
+  </div>
+  <div class="grupo" id="nav-grupo-admin" style="display:none">
+    <span class="grupo-titulo">Configuración</span>
+    <div class="submenu">
+      <a href="/configuracion.html">Configuración</a>
+      <a href="/usuarios.html">Usuarios</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/ubicaciones.html" class="activo">Ubicaciones</a>
+      <a href="/materiales.html">Catálogo de materiales</a>
+    </div>
+  </div>
+</nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <h1>Ubicaciones de la Finca</h1>
+    <p class="sub">Lugares que no son lotes: empacadora, cuarto de motobombas, cartonera, reservorio, vivero, etc. Solo el administrador puede crearlos o editarlos.</p>
+
+    <div id="nota-permiso" class="aviso" style="display:none">Solo el administrador puede crear o editar ubicaciones.</div>
+
+    <div class="barra">
+      <input type="text" class="buscar" id="buscar" placeholder="Buscar ubicación…" oninput="pintar()">
+      <button class="boton" id="btn-nueva" onclick="abrirNueva()" style="display:none;margin-left:auto">+ Nueva ubicación</button>
+    </div>
+
+    <div class="tabla-caja">
+      <table>
+        <thead><tr><th>Nombre</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="cuerpo"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal-fondo" id="modal-ubi">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-cab"><h2 id="mu-titulo">Nueva ubicación</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-ubi" class="aviso"></div>
+        <div class="campo"><label>Nombre (ej. Cuarto de Motobombas)</label><input type="text" id="u-nombre"></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarModal()">Cancelar</button>
+        <button class="boton" onclick="guardar()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let puedeEditar=false, lista=[], editId=null;
+
+async function init(){
+  const rme=await fetch("/api/me");
+  if(!rme.ok){ window.location.href="/"; return; }
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  if(me.rol==="administrador"){ const nga=document.getElementById("nav-grupo-admin"); if(nga) nga.style.display="flex"; }
+  puedeEditar=(me.rol==="administrador");
+  if(puedeEditar) document.getElementById("btn-nueva").style.display="inline-block";
+  else document.getElementById("nota-permiso").style.display="block";
+  await cargar();
+}
+async function cargar(){
+  const r=await fetch("/api/ubicaciones"); if(!r.ok) return;
+  const d=await r.json(); lista=d.ubicaciones||[];
+  pintar();
+}
+function pintar(){
+  const q=(document.getElementById("buscar").value||"").toLowerCase();
+  const tb=document.getElementById("cuerpo"); tb.innerHTML="";
+  const filas=lista.filter(u=>!q||u.nombre.toLowerCase().includes(q));
+  if(filas.length===0){ tb.innerHTML='<tr><td colspan="3" style="color:var(--gris);text-align:center;padding:20px">Sin ubicaciones registradas.</td></tr>'; return; }
+  filas.forEach(u=>{
+    const estado=u.activo?'<span style="color:var(--verde);font-weight:700;font-size:11px">ACTIVA</span>':'<span style="color:var(--gris);font-weight:700;font-size:11px">INACTIVA</span>';
+    let acc="";
+    if(puedeEditar){
+      acc+=`<button class="accion" onclick="abrirEditar(${u.id})">Editar</button>`;
+      if(u.activo) acc+=`<button class="accion" onclick="cambiarActivo(${u.id},false)">Desactivar</button>`;
+      else acc+=`<button class="accion" onclick="cambiarActivo(${u.id},true)">Reactivar</button>`;
+    }
+    tb.insertAdjacentHTML("beforeend",`<tr><td><b>${escapar(u.nombre)}</b></td><td>${estado}</td><td>${acc}</td></tr>`);
+  });
+}
+function abrirNueva(){
+  editId=null;
+  document.getElementById("mu-titulo").textContent="Nueva ubicación";
+  document.getElementById("u-nombre").value="";
+  const av=document.getElementById("aviso-ubi"); av.className="aviso"; av.textContent="";
+  document.getElementById("modal-ubi").classList.add("abierto");
+}
+function abrirEditar(id){
+  const u=lista.find(x=>x.id===id); if(!u) return;
+  editId=id;
+  document.getElementById("mu-titulo").textContent="Editar ubicación";
+  document.getElementById("u-nombre").value=u.nombre;
+  const av=document.getElementById("aviso-ubi"); av.className="aviso"; av.textContent="";
+  document.getElementById("modal-ubi").classList.add("abierto");
+}
+function cerrarModal(){ document.getElementById("modal-ubi").classList.remove("abierto"); }
+async function guardar(){
+  const nombre=document.getElementById("u-nombre").value.trim();
+  const av=document.getElementById("aviso-ubi");
+  if(!nombre){ av.className="aviso error"; av.textContent="El nombre es obligatorio."; return; }
+  const r=await fetch("/api/ubicaciones",{method:editId?"PUT":"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(editId?{id:editId,nombre:nombre,activo:true}:{nombre:nombre})});
+  const d=await r.json();
+  if(!r.ok){ av.className="aviso error"; av.textContent=d.error||"No se pudo guardar."; return; }
+  cerrarModal(); cargar();
+}
+async function cambiarActivo(id,activo){
+  const u=lista.find(x=>x.id===id); if(!u) return;
+  const r=await fetch("/api/ubicaciones",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:id,nombre:u.nombre,activo:activo})});
+  if(!r.ok){ const d=await r.json(); alert(d.error||"No se pudo cambiar."); return; }
+  cargar();
+}
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+init();
+</script>
+<script>
+(function(){
+  function cerrarTodos(excepto){document.querySelectorAll('.grupo.abierto').forEach(g=>{if(g!==excepto)g.classList.remove('abierto')});}
+  document.addEventListener('click',function(e){
+    const t=e.target.closest('.grupo-titulo');
+    if(t){const g=t.parentElement;const ab=g.classList.contains('abierto');cerrarTodos(g);g.classList.toggle('abierto',!ab);}
+    else cerrarTodos(null);
+  });
+})();
+</script>
+</body>
+</html>

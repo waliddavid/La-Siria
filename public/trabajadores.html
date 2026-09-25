@@ -80,6 +80,16 @@
   .zona{border:2px dashed var(--linea);border-radius:10px;padding:26px;text-align:center;color:var(--gris);font-size:14px}
   .resultado{margin-top:14px;font-size:13px}
   .resultado ul{margin:8px 0 0 18px;color:var(--error)}
+
+nav.menu{display:flex;gap:2px;align-items:flex-start}
+.grupo{position:relative}
+.grupo-titulo{display:block;padding:7px 11px;font-size:12.5px;font-weight:600;color:#cddbd0;cursor:pointer;border-radius:6px;white-space:nowrap}
+.grupo-titulo:hover,.grupo.abierto .grupo-titulo{background:rgba(255,255,255,.14);color:#fff}
+.submenu{display:none;position:absolute;top:100%;left:0;min-width:205px;background:#fff;border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.25);padding:6px;z-index:60}
+.grupo:hover .submenu,.grupo.abierto .submenu{display:block}
+.submenu a{display:block;padding:8px 12px;border-radius:6px;color:#2c4a33;font-size:13px;white-space:nowrap}
+.submenu a:hover{background:#eef4ee;color:#1d3a24}
+.submenu a.activo{background:var(--verde);color:#fff;font-weight:700}
 </style>
 </head>
 <body>
@@ -90,23 +100,52 @@
       </svg>
       <span>Finca La Siria</span>
     </div>
-    <nav>
+    <nav class="menu">
+  <div class="grupo">
+    <span class="grupo-titulo">Operaciones</span>
+    <div class="submenu">
       <a href="/dashboard.html">Dashboard</a>
       <a href="/reporte.html">Reporte</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Planeación</span>
+    <div class="submenu">
       <a href="/planificador.html">Planificador</a>
-      <a href="/deberser.html">Deber ser</a>
-      <a href="/jornada.html">Jornada</a>
+      <a href="/asignacion.html">Asignación Coordinadores</a>
       <a href="/labores.html">Labores</a>
-      <a href="/lotes.html">Lotes</a>
-      <a href="/asignacion.html">Asignación</a>
-      <a href="/materiales.html">Materiales</a>
-      <a href="/almacen.html">Almacén</a>
+      <a href="/deberser.html">Deber ser</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Recursos Humanos</span>
+    <div class="submenu">
       <a href="/trabajadores.html" class="activo">Trabajadores</a>
+      <a href="/jornada.html">Jornada Laboral</a>
       <a href="/festivos.html">Festivos</a>
       <a href="/nomina.html">Nómina</a>
-      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
-      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
-    </nav>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Almacén</span>
+    <div class="submenu">
+      <a href="/almacen.html">Materiales</a>
+      <a href="/almacen.html?tipo=repuesto">Repuestos</a>
+      <a href="/herramientas.html">Herramientas</a>
+      <a href="/equipos.html">Equipos</a>
+    </div>
+  </div>
+  <div class="grupo" id="nav-grupo-admin" style="display:none">
+    <span class="grupo-titulo">Configuración</span>
+    <div class="submenu">
+      <a href="/configuracion.html">Configuración</a>
+      <a href="/usuarios.html">Usuarios</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/ubicaciones.html">Ubicaciones</a>
+      <a href="/materiales.html">Catálogo de materiales</a>
+    </div>
+  </div>
+</nav>
     <div class="usuario-actual">
       <span id="quien"></span>
       <button class="salir" onclick="salir()">Salir</button>
@@ -238,8 +277,8 @@ async function init(){
   const me=await rme.json();
   document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
   puedeEditar=(me.rol==="administrador"||me.rol==="rrhh");
-  if(me.rol==="administrador") document.getElementById("nav-usuarios").style.display="inline-block";
-    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+  if(me.rol==="administrador"){const nga=document.getElementById("nav-grupo-admin"); if(nga) nga.style.display="flex";}
+    
   if(puedeEditar) document.getElementById("acciones-top").style.display="flex";
   else document.getElementById("nota-permiso").style.display="block";
   await cargarLabores();
@@ -471,5 +510,15 @@ init();
 })();
 </script>
 
+<script>
+(function(){
+  function cerrarTodos(excepto){document.querySelectorAll('.grupo.abierto').forEach(g=>{if(g!==excepto)g.classList.remove('abierto')});}
+  document.addEventListener('click',function(e){
+    const t=e.target.closest('.grupo-titulo');
+    if(t){const g=t.parentElement;const ab=g.classList.contains('abierto');cerrarTodos(g);g.classList.toggle('abierto',!ab);}
+    else cerrarTodos(null);
+  });
+})();
+</script>
 </body>
 </html>

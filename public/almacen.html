@@ -69,6 +69,16 @@
   .aviso.warn{background:#fbf6e5;color:var(--ambar);border:1px solid #ecdfae;display:block}
   .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
   .capa-row{font-size:12.5px;padding:5px 0;border-bottom:1px solid #f0efe6;display:flex;justify-content:space-between}
+
+nav.menu{display:flex;gap:2px;align-items:flex-start}
+.grupo{position:relative}
+.grupo-titulo{display:block;padding:7px 11px;font-size:12.5px;font-weight:600;color:#cddbd0;cursor:pointer;border-radius:6px;white-space:nowrap}
+.grupo-titulo:hover,.grupo.abierto .grupo-titulo{background:rgba(255,255,255,.14);color:#fff}
+.submenu{display:none;position:absolute;top:100%;left:0;min-width:205px;background:#fff;border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.25);padding:6px;z-index:60}
+.grupo:hover .submenu,.grupo.abierto .submenu{display:block}
+.submenu a{display:block;padding:8px 12px;border-radius:6px;color:#2c4a33;font-size:13px;white-space:nowrap}
+.submenu a:hover{background:#eef4ee;color:#1d3a24}
+.submenu a.activo{background:var(--verde);color:#fff;font-weight:700}
 </style>
 </head>
 <body>
@@ -79,23 +89,52 @@
       </svg>
       <span>Finca La Siria</span>
     </div>
-    <nav>
+    <nav class="menu">
+  <div class="grupo">
+    <span class="grupo-titulo">Operaciones</span>
+    <div class="submenu">
       <a href="/dashboard.html">Dashboard</a>
       <a href="/reporte.html">Reporte</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Planeación</span>
+    <div class="submenu">
       <a href="/planificador.html">Planificador</a>
-      <a href="/deberser.html">Deber ser</a>
-      <a href="/jornada.html">Jornada</a>
+      <a href="/asignacion.html">Asignación Coordinadores</a>
       <a href="/labores.html">Labores</a>
-      <a href="/lotes.html">Lotes</a>
-      <a href="/asignacion.html">Asignación</a>
-      <a href="/materiales.html">Materiales</a>
-      <a href="/almacen.html" class="activo">Almacén</a>
+      <a href="/deberser.html">Deber ser</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Recursos Humanos</span>
+    <div class="submenu">
       <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/jornada.html">Jornada Laboral</a>
       <a href="/festivos.html">Festivos</a>
       <a href="/nomina.html">Nómina</a>
-      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
-      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
-    </nav>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Almacén</span>
+    <div class="submenu">
+      <a href="/almacen.html" class="activo">Materiales</a>
+      <a href="/almacen.html?tipo=repuesto">Repuestos</a>
+      <a href="/herramientas.html">Herramientas</a>
+      <a href="/equipos.html">Equipos</a>
+    </div>
+  </div>
+  <div class="grupo" id="nav-grupo-admin" style="display:none">
+    <span class="grupo-titulo">Configuración</span>
+    <div class="submenu">
+      <a href="/configuracion.html">Configuración</a>
+      <a href="/usuarios.html">Usuarios</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/ubicaciones.html">Ubicaciones</a>
+      <a href="/materiales.html">Catálogo de materiales</a>
+    </div>
+  </div>
+</nav>
     <div class="usuario-actual">
       <span id="quien"></span>
       <button class="salir" onclick="salir()">Salir</button>
@@ -103,7 +142,7 @@
   </header>
 
   <div class="contenedor">
-    <h1>Almacén</h1>
+    <h1>Materiales</h1>
     <p class="sub">Existencias, entradas de material y proveedores. Las salidas vienen en el siguiente paso.</p>
 
     <div id="nota-permiso" class="nota-permiso" style="display:none">
@@ -152,6 +191,7 @@
     <div class="panel" id="p-devoluciones">
       <div class="barra">
         <div style="color:var(--gris);font-size:13px">Material no usado que vuelve al inventario. Puedes registrarla aqu&iacute; o con el bot&oacute;n "Devolver" en la pesta&ntilde;a Salidas.</div>
+        <button class="boton" onclick="abrirEntrega()" style="margin-left:auto">+ Nueva entrega</button>
         <button class="boton" id="btn-dev" onclick="abrirDevLibre()" style="display:none;margin-left:auto">+ Registrar devoluci&oacute;n</button>
       </div>
       <div class="tabla-caja">
@@ -318,18 +358,47 @@
       </div>
     </div>
   </div>
+  <!-- Modal ENTREGA UNIFICADA (8E) -->
+  <div class="modal-fondo" id="modal-entrega">
+    <div class="modal" style="max-width:780px">
+      <div class="modal-cab"><h2>Nueva entrega</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-entrega" class="aviso" style="display:block"></div>
+        <div class="grid2">
+          <div class="campo"><label>Trabajador</label><select id="e-trabajador" onchange="entDiaCambio()"></select></div>
+          <div class="campo"><label>Fecha</label><input type="date" id="e-fecha" onchange="entDiaCambio()"></div>
+        </div>
+        <div id="e-plan" style="margin:10px 0"></div>
+        <div id="e-dia" style="margin:10px 0"></div>
+        <div style="font-size:12px;font-weight:700;color:var(--verde-hondo);margin:12px 0 6px">NUEVAS LÍNEAS</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <button type="button" class="btn-sec" onclick="entAddLinea('material')">+ Material</button>
+          <button type="button" class="btn-sec" onclick="entAddLinea('repuesto')">+ Repuesto</button>
+          <button type="button" class="btn-sec" onclick="entAddLinea('herramienta')">+ Herramienta</button>
+        </div>
+        <div id="e-lineas"></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarEntrega()">Cerrar</button>
+        <button class="boton" onclick="guardarEntrega()">Guardar entrega</button>
+      </div>
+    </div>
+  </div>
 
 <script>
 let puedeEditar=false, esVerificador=false, inventario=[], proveedores=[], editProvId=null;
+const TIPO_VIEW=(new URLSearchParams(location.search)).get("tipo")==="repuesto"?"repuesto":"material";
+let entLineas=[], entTrabajadores=[], entMats=[], entHerrLibres=[], entLotes=[], entUbis=[], entLabores=[], entPrefill=null;
 let trabajadoresSal=[], centrosSal=[], salidas=[];
 
 async function init(){
+  if(TIPO_VIEW==="repuesto"){ document.title="Repuestos — La Siria"; const h1=document.querySelector("h1"); if(h1) h1.textContent="Repuestos"; }
   const rme=await fetch("/api/me");
   if(!rme.ok){ window.location.href="/"; return; }
   const me=await rme.json();
   document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
-  if(me.rol==="administrador") document.getElementById("nav-usuarios").style.display="inline-block";
-    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+  if(me.rol==="administrador"){const nga=document.getElementById("nav-grupo-admin"); if(nga) nga.style.display="flex";}
+    
   puedeEditar=(me.rol==="administrador"||me.rol==="almacen");
   esVerificador=(me.rol==="administrador"||me.rol==="rrhh"||me.rol==="revisora_fiscal");
   if(puedeEditar){
@@ -364,7 +433,7 @@ function verTab(p){
 
 async function cargarInventario(){
   const r=await fetch("/api/inventario"); const d=await r.json();
-  inventario=d.inventario;
+  inventario=(d.inventario||[]).filter(x=>!x.material_tipo||x.material_tipo===TIPO_VIEW);
   document.getElementById("cargando-inv").style.display="none";
   document.getElementById("caja-inv").style.display="block";
   pintarInv();
@@ -526,7 +595,7 @@ async function verPrecios(id,nombre){
 /* SALIDAS */
 async function cargarSalidas(){
   const r=await fetch("/api/salidas"); if(!r.ok) return;
-  const d=await r.json(); salidas=d.salidas;
+  const d=await r.json(); salidas=(d.salidas||[]).filter(s=>!s.material_tipo||s.material_tipo===TIPO_VIEW);
   const tb=document.getElementById("cuerpo-salidas"); tb.innerHTML="";
   if(salidas.length===0){ tb.innerHTML='<tr><td colspan="7" style="color:var(--gris);text-align:center;padding:20px">Sin salidas registradas.</td></tr>'; return; }
   salidas.forEach(s=>{
@@ -536,11 +605,11 @@ async function cargarSalidas(){
     const pend = Number(s.cantidad)-dev;
     const devTxt = dev>0 ? ` <span style="color:var(--ambar);font-size:11px">(devolv. ${dev})</span>` : "";
     tr.innerHTML=`
-      <td>${s.fecha}</td>
+      <td>${s.fecha}${s.hora?` <small class="dato">${s.hora}</small>`:""}</td>
       <td>${escapar((s.material_codigo?s.material_codigo+" · ":"")+s.material)}</td>
       <td>${s.cantidad}${falt}${devTxt}</td>
       <td>${escapar(s.trabajador)}</td>
-      <td>${s.centro_costo?escapar(s.centro_costo):'<small class="dato">—</small>'}</td>
+      <td>${s.ubicacion?escapar(s.ubicacion):(s.centro_costo?escapar(s.centro_costo):'<small class="dato">—</small>')}</td>
       <td class="num">${s.costo_total!=null?"$"+Number(s.costo_total).toLocaleString('es-CO'):"—"}</td>
       <td>${puedeEditar&&pend>0?`<button class="accion" onclick="abrirDev(${s.id})">Devolver</button>`:""}</td>`;
     tb.appendChild(tr);
@@ -636,7 +705,7 @@ async function cargarEntradas(){
   const d=await r.json();
   const tb=document.getElementById("cuerpo-entradas"); tb.innerHTML="";
   if(d.entradas.length===0){ tb.innerHTML='<tr><td colspan="7" style="color:var(--gris);text-align:center;padding:20px">Sin entradas registradas.</td></tr>'; return; }
-  d.entradas.forEach(e=>{
+  (d.entradas||[]).filter(e=>!e.material_tipo||e.material_tipo===TIPO_VIEW).forEach(e=>{
     const marca=e.factura_nro==="DEVOLUCION"||e.factura_nro==="FALTANTE";
     tb.insertAdjacentHTML("beforeend",`<tr>
       <td>${e.fecha}</td>
@@ -773,6 +842,125 @@ async function justificarSalida(id){
   if(!r.ok){ const d=await r.json(); alert(d.error||"No se pudo justificar."); return; }
   cargarCruce();
 }
+// ============ ENTREGA UNIFICADA (8E) ============
+async function abrirEntrega(){
+  if(!entTrabajadores.length){ try{ const r=await fetch("/api/trabajadores"); if(r.ok){ const d=await r.json(); entTrabajadores=(d.trabajadores||[]).filter(t=>t.activo); } }catch(e){} }
+  if(!entMats.length){ try{ const r=await fetch("/api/materiales"); if(r.ok){ const d=await r.json(); entMats=(d.materiales||[]).filter(m=>m.activo); } }catch(e){} }
+  if(!entLotes.length){ try{ const r=await fetch("/api/lotes"); if(r.ok){ const d=await r.json(); entLotes=(d.lotes||[]).filter(l=>l.activo!==false); } }catch(e){} }
+  if(!entUbis.length){ try{ const r=await fetch("/api/ubicaciones"); if(r.ok){ const d=await r.json(); entUbis=(d.ubicaciones||[]).filter(u=>u.activo); } }catch(e){} }
+  if(!entLabores.length){ try{ const r=await fetch("/api/labores"); if(r.ok){ const d=await r.json(); entLabores=(d.labores||[]).filter(l=>l.activo!==false); } }catch(e){} }
+  try{ const r=await fetch("/api/herramientas"); if(r.ok){ const d=await r.json(); entHerrLibres=(d.herramientas||[]).filter(h=>h.estado==='activa'&&!h.prestamo_id); } }catch(e){}
+  try{ const r=await fetch("/api/mantenimientos"); if(r.ok){ const d=await r.json(); window.__entMants=(d.mantenimientos||[]).filter(m=>!m.cerrado_en); } }catch(e){ window.__entMants=[]; }
+  document.getElementById("e-trabajador").innerHTML='<option value="">— elige trabajador —</option>'+entTrabajadores.map(t=>`<option value="${t.id}">${escapar(t.nombre)}</option>`).join("");
+  document.getElementById("e-fecha").value=new Date().toISOString().slice(0,10);
+  entLineas=[]; entPrefill=null; window.__entPlan=[];
+  renderLineas();
+  document.getElementById("e-plan").innerHTML='<small class="dato">Elige trabajador y fecha para ver el plan del día y lo ya entregado.</small>';
+  document.getElementById("e-dia").innerHTML="";
+  const av=document.getElementById("aviso-entrega"); av.className="aviso"; av.textContent="";
+  document.getElementById("modal-entrega").classList.add("abierto");
+}
+function cerrarEntrega(){ document.getElementById("modal-entrega").classList.remove("abierto"); }
+async function entDiaCambio(){
+  const tid=document.getElementById("e-trabajador").value;
+  const fecha=document.getElementById("e-fecha").value;
+  entPrefill=null;
+  if(!tid||!fecha){
+    document.getElementById("e-plan").innerHTML='<small class="dato">Elige trabajador y fecha para ver el plan del día y lo ya entregado.</small>';
+    document.getElementById("e-dia").innerHTML="";
+    return;
+  }
+  try{
+    const rp=await fetch("/api/plan/hoy?trabajador_id="+tid+"&fecha="+fecha);
+    const dp=await rp.json();
+    window.__entPlan=dp.plan||[];
+    const plan=window.__entPlan;
+    document.getElementById("e-plan").innerHTML='<div style="font-size:12px;font-weight:700;color:var(--verde-hondo);margin-bottom:6px">PLANIFICADOR (tocar para precargar)</div>'+
+      (plan.length
+        ? plan.map((p,ix)=>`<button type="button" class="btn-sec" style="margin:0 6px 6px 0" onclick="entPrefillIx(${ix})">${escapar(p.labor||'Labor')} · ${escapar(p.lote||'sin lote')}</button>`).join("")
+        : '<small class="dato">Sin asignaciones planeadas este día.</small>');
+  }catch(e){ document.getElementById("e-plan").innerHTML=""; }
+  try{
+    const rd=await fetch("/api/entregas/dia?trabajador_id="+tid+"&fecha="+fecha);
+    const dd=await rd.json();
+    const items=[];
+    (dd.salidas||[]).forEach(s=>items.push({hora:s.hora||"", txt:`<span style="color:${s.material_tipo==='repuesto'?'var(--ambar)':'var(--verde)'};font-size:10px;font-weight:700">${s.material_tipo==='repuesto'?'REPUESTO':'MATERIAL'}</span> ${escapar((s.material_codigo?s.material_codigo+" · ":"")+s.material)} — ${Number(s.cantidad).toLocaleString('es-CO')} ${s.unidad||""} → ${escapar(s.lote||s.ubicacion||s.labor||"sin destino")}${s.faltante>0?` <span style="color:var(--error)">(faltó ${s.faltante})</span>`:""}${Number(s.devuelto||0)>0?` <span style="color:var(--ambar)">(devolv. ${s.devuelto})</span>`:""}`}));
+    (dd.prestamos||[]).forEach(p=>items.push({hora:p.hora||"", txt:`<span style="color:var(--gris);font-size:10px;font-weight:700">HERRAMIENTA</span> ${escapar(p.codigo+" · "+p.herramienta)}${p.fecha_devolucion?' <small class="dato">(devuelta)</small>':""}`}));
+    let html='<div style="font-size:12px;font-weight:700;color:var(--verde-hondo);margin:6px 0">ENTREGADO HOY</div>';
+    html+= items.length
+      ? '<table style="width:100%;font-size:12.5px">'+items.map(it=>`<tr><td style="white-space:nowrap;color:var(--gris);padding:2px 8px 2px 0">${it.hora}</td><td>${it.txt}</td></tr>`).join("")+"</table>"
+      : '<small class="dato">Nada entregado aún hoy a este trabajador.</small>';
+    document.getElementById("e-dia").innerHTML=html;
+  }catch(e){ document.getElementById("e-dia").innerHTML=""; }
+}
+function entPrefillIx(ix){
+  const p=(window.__entPlan||[])[ix]; if(!p) return;
+  entPrefill={labor_id:p.labor_id||null, lote_id:p.lote_id||null};
+}
+function entAddLinea(tipo){
+  if(!document.getElementById("e-trabajador").value){ alert("Primero elige el trabajador."); return; }
+  entLineas.push({tipo_linea:tipo, material_id:"", herramienta_id:"", cantidad:"",
+    labor_id:entPrefill?entPrefill.labor_id:"", lote_id:entPrefill?entPrefill.lote_id:"", ubicacion_id:"", mantenimiento_id:"", nota:""});
+  renderLineas();
+}
+function entQuitarLinea(ix){ entLineas.splice(ix,1); renderLineas(); }
+function entLineaDestino(ix,val){
+  const ln=entLineas[ix];
+  if(val.indexOf("l:")===0){ ln.lote_id=val.slice(2); ln.ubicacion_id=""; }
+  else if(val.indexOf("u:")===0){ ln.ubicacion_id=val.slice(2); ln.lote_id=""; }
+  else { ln.lote_id=""; ln.ubicacion_id=""; }
+}
+function renderLineas(){
+  const c=document.getElementById("e-lineas"); c.innerHTML="";
+  entLineas.forEach((ln,ix)=>{
+    let controles="";
+    if(ln.tipo_linea==="herramienta"){
+      controles=`<select onchange="entLineas[${ix}].herramienta_id=this.value"><option value="">— herramienta (activa y libre) —</option>${entHerrLibres.map(h=>`<option value="${h.id}" ${String(h.id)===String(ln.herramienta_id)?"selected":""}>${escapar(h.codigo+" · "+h.nombre)}</option>`).join("")}</select>`;
+    } else {
+      const mats=entMats.filter(m=>m.tipo===ln.tipo_linea);
+      controles=`<select onchange="entLineas[${ix}].material_id=this.value"><option value="">— ${ln.tipo_linea==='repuesto'?'repuesto':'material'} —</option>${mats.map(mm=>`<option value="${mm.id}" ${String(mm.id)===String(ln.material_id)?"selected":""}>${escapar((mm.codigo?mm.codigo+" · ":"")+mm.nombre)}</option>`).join("")}</select>
+      <input type="number" step="0.01" placeholder="Cantidad" style="width:95px" value="${ln.cantidad}" oninput="entLineas[${ix}].cantidad=this.value">`;
+      if(ln.tipo_linea==='repuesto'){
+        controles+=` <select onchange="entLineas[${ix}].mantenimiento_id=this.value" title="Mantenimiento asociado (opc.)" style="max-width:170px"><option value="">mant. (opc.)</option>${(window.__entMants||[]).map(mm2=>`<option value="${mm2.id}" ${String(mm2.id)===String(ln.mantenimiento_id)?"selected":""}>${escapar(mm2.codigo+" · "+mm2.fecha)}</option>`).join("")}</select>`;
+      }
+    }
+    const row=document.createElement("div");
+    row.style.cssText="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:8px;border:1px solid #dfe7df;border-radius:8px";
+    row.innerHTML=`<span style="font-size:11px;font-weight:700;color:${ln.tipo_linea==='herramienta'?'var(--ambar)':(ln.tipo_linea==='repuesto'?'#b07840':'var(--verde)')}">${ln.tipo_linea.toUpperCase()}</span>
+      ${controles}
+      <select onchange="entLineas[${ix}].labor_id=this.value"><option value="">labor (opc.)</option>${entLabores.map(l=>`<option value="${l.id}" ${String(l.id)===String(ln.labor_id)?"selected":""}>${escapar(l.nombre)}</option>`).join("")}</select>
+      <select onchange="entLineaDestino(${ix},this.value)"><option value="">destino (opc.)</option>
+        <optgroup label="Lotes">${entLotes.map(l=>`<option value="l:${l.id}" ${String(l.id)===String(ln.lote_id)&&!ln.ubicacion_id?"selected":""}>${escapar(l.nombre)}</option>`).join("")}</optgroup>
+        <optgroup label="Ubicaciones">${entUbis.map(u=>`<option value="u:${u.id}" ${String(u.id)===String(ln.ubicacion_id)?"selected":""}>${escapar(u.nombre)}</option>`).join("")}</optgroup>
+      </select>
+      <input type="text" placeholder="Nota" style="flex:1;min-width:90px" value="${escapar(ln.nota||'')}" oninput="entLineas[${ix}].nota=this.value">
+      <button class="accion" onclick="entQuitarLinea(${ix})" style="color:var(--error)">Quitar</button>`;
+    c.appendChild(row);
+  });
+}
+async function guardarEntrega(){
+  const av=document.getElementById("aviso-entrega");
+  const tid=parseInt(document.getElementById("e-trabajador").value,10);
+  if(!tid){ av.className="aviso error"; av.style.display="block"; av.textContent="Elige el trabajador."; return; }
+  if(!entLineas.length){ av.className="aviso error"; av.style.display="block"; av.textContent="Agrega al menos una línea."; return; }
+  for(const ln of entLineas){
+    if(ln.tipo_linea==="herramienta"){ if(!ln.herramienta_id){ av.className="aviso error"; av.style.display="block"; av.textContent="Hay una línea de herramienta sin elegir."; return; } }
+    else if(!ln.material_id||!(parseFloat(ln.cantidad)>0)){ av.className="aviso error"; av.style.display="block"; av.textContent="Toda línea de material/repuesto necesita material y cantidad."; return; }
+  }
+  const ahora=new Date();
+  const hora=String(ahora.getHours()).padStart(2,"0")+":"+String(ahora.getMinutes()).padStart(2,"0");
+  const r=await fetch("/api/entrega",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({trabajador_id:tid, fecha:document.getElementById("e-fecha").value, hora:hora,
+      lineas:entLineas.map(ln=>({tipo_linea:ln.tipo_linea, material_id:ln.material_id||null, herramienta_id:ln.herramienta_id||null,
+        cantidad:ln.cantidad?parseFloat(ln.cantidad):null, labor_id:ln.labor_id||null, lote_id:ln.lote_id||null,
+        ubicacion_id:ln.ubicacion_id||null, mantenimiento_id:ln.mantenimiento_id||null, nota:ln.nota||null}))})});
+  const d=await r.json();
+  if(!r.ok){ av.className="aviso error"; av.style.display="block"; av.textContent=d.error||"No se pudo guardar la entrega."; return; }
+  av.className="aviso"; av.style.display="block"; av.style.color="var(--verde)";
+  av.textContent=`Guardado: ${d.salidas} material(es)/repuesto(s), ${d.prestamos} herramienta(s)`+(d.alertas?` · ${d.alertas} alerta(s) fuera de plan enviada(s) al coordinador`:"")+".";
+  entLineas=[]; renderLineas(); entDiaCambio();
+  cargarSalidas(); cargarInventario();
+}
 </script>
 <script>
 // Campanita de pendientes (inyectada en todas las paginas)
@@ -804,5 +992,15 @@ async function justificarSalida(id){
 })();
 </script>
 
+<script>
+(function(){
+  function cerrarTodos(excepto){document.querySelectorAll('.grupo.abierto').forEach(g=>{if(g!==excepto)g.classList.remove('abierto')});}
+  document.addEventListener('click',function(e){
+    const t=e.target.closest('.grupo-titulo');
+    if(t){const g=t.parentElement;const ab=g.classList.contains('abierto');cerrarTodos(g);g.classList.toggle('abierto',!ab);}
+    else cerrarTodos(null);
+  });
+})();
+</script>
 </body>
 </html>

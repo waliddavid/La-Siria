@@ -645,6 +645,8 @@ async function handleApi(req, env, path) {
     if (user.rol !== "administrador") return json({ error: "Solo el administrador puede crear lotes." }, 403);
     const b = await req.json();
     if (!b.nombre || !b.nombre.trim()) return json({ error: "El nombre es obligatorio." }, 400);
+    if (b.hectareas == null || b.hectareas === "" || !(parseFloat(b.hectareas) > 0))
+      return json({ error: "Las hectáreas son obligatorias y deben ser mayores a cero." }, 400);
     const res = await env.DB.prepare(
       `INSERT INTO lotes (nombre, grupo_riego_id, se_suspende_nino, ranking_rinde, densidad_plantas_ha, activo)
        VALUES (?, ?, ?, ?, ?, 1)`
@@ -1251,7 +1253,7 @@ async function handleApi(req, env, path) {
     const user = await currentUser(req, env);
     if (!user) return json({ error: "No autenticado." }, 401);
     const { results } = await env.DB.prepare(
-      `SELECT id, codigo, nombre, unidad, precio_unitario, unidad_compra, peso_presentacion, unidad_peso, activo
+      `SELECT id, codigo, nombre, unidad, precio_unitario, unidad_compra, peso_presentacion, unidad_peso, activo, tipo
        FROM materiales ORDER BY activo DESC, codigo`
     ).all();
     // centros de cada material
@@ -1272,11 +1274,12 @@ async function handleApi(req, env, path) {
     const b = await req.json();
     if (!b.nombre || !b.nombre.trim()) return json({ error: "El nombre es obligatorio." }, 400);
     const res = await env.DB.prepare(
-      `INSERT INTO materiales (codigo, nombre, unidad, precio_unitario, unidad_compra, peso_presentacion, unidad_peso, activo)
-       VALUES (?,?,?,?,?,?,?,1)`
+      `INSERT INTO materiales (codigo, nombre, unidad, precio_unitario, unidad_compra, peso_presentacion, unidad_peso, activo, tipo)
+       VALUES (?,?,?,?,?,?,?,1,?)`
     ).bind(
       b.codigo ?? null, b.nombre.trim(), b.unidad ?? null, b.precio_unitario ?? null,
-      b.unidad_compra ?? null, b.peso_presentacion ?? null, b.unidad_peso ?? null
+      b.unidad_compra ?? null, b.peso_presentacion ?? null, b.unidad_peso ?? null,
+      ["material","repuesto"].includes(b.tipo) ? b.tipo : "material"
     ).run();
     const mid = res.meta.last_row_id;
     if (Array.isArray(b.centros)) await setCentros(env, mid, b.centros);
@@ -1293,7 +1296,7 @@ async function handleApi(req, env, path) {
     if (!antes) return json({ error: "Material no encontrado." }, 404);
     const b = await req.json();
     await env.DB.prepare(
-      `UPDATE materiales SET codigo=?, nombre=?, unidad=?, precio_unitario=?, unidad_compra=?, peso_presentacion=?, unidad_peso=?, activo=?
+      `UPDATE materiales SET codigo=?, nombre=?, unidad=?, precio_unitario=?, unidad_compra=?, peso_presentacion=?, unidad_peso=?, activo=?, tipo=?
        WHERE id=?`
     ).bind(
       b.codigo !== undefined ? b.codigo : antes.codigo,
@@ -1304,6 +1307,7 @@ async function handleApi(req, env, path) {
       b.peso_presentacion !== undefined ? b.peso_presentacion : antes.peso_presentacion,
       b.unidad_peso !== undefined ? b.unidad_peso : antes.unidad_peso,
       b.activo != null ? (b.activo ? 1 : 0) : antes.activo,
+      ["material","repuesto"].includes(b.tipo) ? b.tipo : (antes.tipo || "material"),
       id
     ).run();
     if (Array.isArray(b.centros)) await setCentros(env, id, b.centros);
@@ -1355,7 +1359,7 @@ async function handleApi(req, env, path) {
     const user = await currentUser(req, env);
     if (!user) return json({ error: "No autenticado." }, 401);
     const { results } = await env.DB.prepare(
-      `SELECT m.id, m.codigo, m.nombre, m.unidad, m.precio_unitario, m.stock_minimo,
+      `SELECT m.id, m.codigo, m.nombre, m.unidad, m.tipo AS material_tipo, m.precio_unitario, m.stock_minimo,
               COALESCE(SUM(e.cantidad_actual), 0) AS existencia,
               COUNT(e.id) AS capas
        FROM materiales m
@@ -1387,7 +1391,7 @@ async function handleApi(req, env, path) {
     if (!user) return json({ error: "No autenticado." }, 401);
     const { results } = await env.DB.prepare(
       `SELECT e.id, e.fecha, e.cantidad_inicial, e.cantidad_actual, e.precio_unitario, e.factura_nro,
-              m.codigo AS material_codigo, m.nombre AS material, m.unidad, p.nombre AS proveedor
+              m.codigo AS material_codigo, m.nombre AS material, m.unidad, m.tipo AS material_tipo, p.nombre AS proveedor
        FROM entradas_almacen e
        JOIN materiales m ON m.id = e.material_id
        LEFT JOIN proveedores p ON p.id = e.proveedor_id
@@ -2059,10 +2063,10 @@ async function handleApi(req, env, path) {
 
     // registrar la salida
     const res = await env.DB.prepare(
-      `INSERT INTO salidas_almacen (fecha, material_id, trabajador_id, centro_costo_id, cantidad, costo_total, faltante, labor_id, lote_id, nota, registrado_por)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+      `INSERT INTO salidas_almacen (fecha, material_id, trabajador_id, centro_costo_id, cantidad, costo_total, faltante, labor_id, lote_id, ubicacion_id, nota, registrado_por, hora)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).bind(b.fecha, b.material_id, b.trabajador_id, centroCosto || null, b.cantidad,
-           Math.round(costoTotal), faltante, b.labor_id || null, b.lote_id || null, b.nota || null, user.id).run();
+           Math.round(costoTotal), faltante, b.labor_id || null, b.lote_id || null, b.ubicacion_id || null, b.nota || null, user.id, b.hora || null).run();
     const salidaId = res.meta.last_row_id;
 
     // aplicar los descuentos a las capas y guardar el detalle
@@ -2104,10 +2108,12 @@ async function handleApi(req, env, path) {
     const cruce = await salidaTieneActividad(env, { fecha: b.fecha, trabajador_id: b.trabajador_id, labor_id: b.labor_id || null, lote_id: b.lote_id || null });
     if (!cruce) {
       const tNom2 = await env.DB.prepare("SELECT nombre FROM trabajadores WHERE id=?").bind(b.trabajador_id).first();
+      const mn2 = await env.DB.prepare("SELECT codigo, nombre FROM materiales WHERE id=?").bind(b.material_id).first();
+      const nombreMat2 = mn2 ? ((mn2.codigo ? mn2.codigo + " · " : "") + mn2.nombre) : ("Material " + b.material_id);
       await crearPendiente(env, {
         tipo: "resolver",
-        titulo: `Salida sin actividad asociada: ${nombreMat}`,
-        detalle: `Se entregó ${b.cantidad} de ${nombreMat} a ${tNom2 ? tNom2.nombre : "trabajador " + b.trabajador_id} el ${b.fecha} sin labor planeada ni reportada que la respalde. Verifica con el coordinador; se cierra solo si aparece la actividad, o se justifica desde Almacén › Cruce.`,
+        titulo: `Salida sin actividad asociada: ${nombreMat2}`,
+        detalle: `Se entregó ${b.cantidad} de ${nombreMat2} a ${tNom2 ? tNom2.nombre : "trabajador " + b.trabajador_id} el ${b.fecha} sin labor planeada ni reportada que la respalde. Verifica con el coordinador; se cierra solo si aparece la actividad, o se justifica desde Almacén › Cruce.`,
         origen: "almacen",
         ref_tabla: "salida_sin_actividad",
         ref_id: salidaId,
@@ -2125,10 +2131,12 @@ async function handleApi(req, env, path) {
     const fecha = url.searchParams.get("fecha");
     let q = `SELECT s.id, s.fecha, s.cantidad, s.costo_total, s.faltante,
                     COALESCE((SELECT SUM(d.cantidad) FROM devoluciones_almacen d WHERE d.salida_id = s.id),0) AS devuelto,
+                    s.hora, s.ubicacion_id, u.nombre AS ubicacion, m.tipo AS material_tipo,
                     m.codigo AS material_codigo, m.nombre AS material, m.unidad,
                     t.nombre AS trabajador, c.nombre AS centro_costo
              FROM salidas_almacen s
              JOIN materiales m ON m.id = s.material_id
+       LEFT JOIN ubicaciones u ON u.id = s.ubicacion_id
              JOIN trabajadores t ON t.id = s.trabajador_id
              LEFT JOIN centros_costo c ON c.id = s.centro_costo_id`;
     const binds = [];
@@ -2293,6 +2301,517 @@ async function handleApi(req, env, path) {
     return json({ configurado, labor_id: laborId, material_id: matId, ratio, tolerancia: tol,
                   racimos, bolsas, esperado, limite, estado,
                   semana: { inicio: f1, fin: f2 } });
+  }
+
+  // ==========================================================
+  // HERRAMIENTAS: identificacion individual + prestamos
+  // ==========================================================
+  if (path === "/api/herramientas" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const { results } = await env.DB.prepare(
+      `SELECT h.id, h.codigo, h.nombre, h.estado, h.nota, h.activo,
+              p.id AS prestamo_id, p.fecha_prestamo, t.nombre AS prestatario
+       FROM herramientas h
+       LEFT JOIN prestamos_herramientas p ON p.herramienta_id = h.id AND p.fecha_devolucion IS NULL
+       LEFT JOIN trabajadores t ON t.id = p.trabajador_id
+       WHERE h.activo = 1
+       ORDER BY h.codigo`
+    ).all();
+    return json({ herramientas: results });
+  }
+
+  if (path === "/api/herramientas" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!puedeAlmacen(user)) return json({ error: "Solo administración o almacén pueden crear herramientas." }, 403);
+    const b = await req.json();
+    if (!b.codigo || !String(b.codigo).trim() || !b.nombre || !String(b.nombre).trim())
+      return json({ error: "Código y nombre son obligatorios." }, 400);
+    const existe = await env.DB.prepare("SELECT id FROM herramientas WHERE codigo=?").bind(String(b.codigo).trim()).first();
+    if (existe) return json({ error: `Ya existe una herramienta con el código ${b.codigo}.` }, 400);
+    const res = await env.DB.prepare(
+      "INSERT INTO herramientas (codigo, nombre, nota) VALUES (?,?,?)"
+    ).bind(String(b.codigo).trim(), String(b.nombre).trim(), b.nota || null).run();
+    await audit(env, user.id, "crear", "herramientas", res.meta.last_row_id, null, b);
+    return json({ ok: true, id: res.meta.last_row_id });
+  }
+
+  if (path === "/api/herramientas" && req.method === "PUT") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!puedeAlmacen(user)) return json({ error: "Solo administración o almacén pueden editar herramientas." }, 403);
+    const b = await req.json();
+    if (!b.id || !b.nombre || !String(b.nombre).trim())
+      return json({ error: "Falta la herramienta o el nombre." }, 400);
+    const h = await env.DB.prepare("SELECT * FROM herramientas WHERE id=?").bind(b.id).first();
+    if (!h) return json({ error: "La herramienta no existe." }, 404);
+    if (b.codigo && String(b.codigo).trim() !== h.codigo) {
+      const existe = await env.DB.prepare("SELECT id FROM herramientas WHERE codigo=? AND id!=?").bind(String(b.codigo).trim(), b.id).first();
+      if (existe) return json({ error: `Ya existe otra herramienta con el código ${b.codigo}.` }, 400);
+    }
+    await env.DB.prepare(
+      "UPDATE herramientas SET codigo=?, nombre=?, nota=?, activo=? WHERE id=?"
+    ).bind(b.codigo ? String(b.codigo).trim() : h.codigo, String(b.nombre).trim(), b.nota || null,
+          b.activo === undefined ? h.activo : (b.activo ? 1 : 0), b.id).run();
+    await audit(env, user.id, "editar", "herramientas", b.id, h, b);
+    return json({ ok: true });
+  }
+
+  // cambio de estado: activa <-> danada -> retirada (retirada es final)
+  if (path === "/api/herramientas/estado" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!puedeAlmacen(user)) return json({ error: "Solo administración o almacén pueden cambiar estados." }, 403);
+    const b = await req.json();
+    const validos = ["activa", "danada", "retirada"];
+    if (!b.id || !validos.includes(b.estado)) return json({ error: "Estado no válido." }, 400);
+    const h = await env.DB.prepare("SELECT * FROM herramientas WHERE id=?").bind(b.id).first();
+    if (!h) return json({ error: "La herramienta no existe." }, 404);
+    const permitidas = { activa: ["danada", "retirada"], danada: ["activa", "retirada"], retirada: [] };
+    if (!permitidas[h.estado].includes(b.estado))
+      return json({ error: `No se puede pasar de "${h.estado}" a "${b.estado}".` }, 400);
+    const abierto = await env.DB.prepare(
+      "SELECT id FROM prestamos_herramientas WHERE herramienta_id=? AND fecha_devolucion IS NULL"
+    ).bind(b.id).first();
+    if (abierto && b.estado === "retirada") return json({ error: "Tiene un préstamo abierto; devuélvela primero." }, 400);
+    await env.DB.prepare("UPDATE herramientas SET estado=? WHERE id=?").bind(b.estado, b.id).run();
+    await audit(env, user.id, "estado", "herramientas", b.id, { estado: h.estado }, { estado: b.estado });
+    return json({ ok: true });
+  }
+
+  // prestar: la herramienta debe estar activa y sin prestamo abierto
+  if (path === "/api/herramientas/prestar" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!puedeAlmacen(user)) return json({ error: "Solo administración o almacén pueden prestar herramientas." }, 403);
+    const b = await req.json();
+    if (!b.herramienta_id || !b.trabajador_id || !b.fecha)
+      return json({ error: "Faltan herramienta, trabajador o fecha." }, 400);
+    const h = await env.DB.prepare("SELECT * FROM herramientas WHERE id=? AND activo=1").bind(b.herramienta_id).first();
+    if (!h) return json({ error: "La herramienta no existe." }, 404);
+    if (h.estado !== "activa") return json({ error: `La herramienta está "${h.estado}"; no se puede prestar.` }, 400);
+    const abierto = await env.DB.prepare(
+      "SELECT id FROM prestamos_herramientas WHERE herramienta_id=? AND fecha_devolucion IS NULL"
+    ).bind(b.herramienta_id).first();
+    if (abierto) return json({ error: "La herramienta ya tiene un préstamo abierto; devuélvela primero." }, 400);
+    const t = await env.DB.prepare("SELECT id FROM trabajadores WHERE id=? AND activo=1").bind(b.trabajador_id).first();
+    if (!t) return json({ error: "El trabajador no existe o está inactivo." }, 400);
+    const res = await env.DB.prepare(
+      "INSERT INTO prestamos_herramientas (herramienta_id, trabajador_id, fecha_prestamo, nota, registrado_por, hora) VALUES (?,?,?,?,?,?)"
+    ).bind(b.herramienta_id, b.trabajador_id, b.fecha, b.nota || null, user.id, b.hora || null).run();
+    await audit(env, user.id, "crear", "prestamos_herramientas", res.meta.last_row_id, null, b);
+    return json({ ok: true, id: res.meta.last_row_id });
+  }
+
+  // devolver: cierra el prestamo; si volvio danada, la herramienta pasa a danada
+  if (path === "/api/herramientas/devolver" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!puedeAlmacen(user)) return json({ error: "Solo administración o almacén pueden registrar devoluciones." }, 403);
+    const b = await req.json();
+    if (!b.prestamo_id || !b.fecha) return json({ error: "Faltan préstamo o fecha." }, 400);
+    const p = await env.DB.prepare("SELECT * FROM prestamos_herramientas WHERE id=?").bind(b.prestamo_id).first();
+    if (!p) return json({ error: "El préstamo no existe." }, 404);
+    if (p.fecha_devolucion) return json({ error: "Este préstamo ya fue devuelto." }, 400);
+    const danada = b.volvio_danada ? 1 : 0;
+    await env.DB.prepare(
+      "UPDATE prestamos_herramientas SET fecha_devolucion=?, volvio_danada=?, nota=? WHERE id=?"
+    ).bind(b.fecha, danada, b.nota || p.nota, b.prestamo_id).run();
+    if (danada) await env.DB.prepare("UPDATE herramientas SET estado='danada' WHERE id=?").bind(p.herramienta_id).run();
+    await audit(env, user.id, "devolver", "prestamos_herramientas", b.prestamo_id, p, b);
+    return json({ ok: true, danada: !!danada });
+  }
+
+  // prestamos: abiertos primero, luego historial
+  if (path === "/api/prestamos" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const { results } = await env.DB.prepare(
+      `SELECT p.id, p.hora, p.fecha_prestamo, p.fecha_devolucion, p.volvio_danada, p.nota,
+              h.codigo, h.nombre AS herramienta, t.nombre AS trabajador
+       FROM prestamos_herramientas p
+       JOIN herramientas h ON h.id = p.herramienta_id
+       JOIN trabajadores t ON t.id = p.trabajador_id
+       ORDER BY (p.fecha_devolucion IS NULL) DESC, p.fecha_prestamo DESC, p.id DESC
+       LIMIT 300`
+    ).all();
+    return json({ prestamos: results });
+  }
+
+  // ==========================================================
+  // UBICACIONES (lugares de la finca que no son lotes)
+  // ==========================================================
+  if (path === "/api/ubicaciones" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const { results } = await env.DB.prepare(
+      "SELECT id, nombre, activo FROM ubicaciones ORDER BY nombre"
+    ).all();
+    return json({ ubicaciones: results });
+  }
+
+  if (path === "/api/ubicaciones" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (user.rol !== "administrador") return json({ error: "Solo el administrador puede crear ubicaciones." }, 403);
+    const b = await req.json();
+    if (!b.nombre || !String(b.nombre).trim()) return json({ error: "El nombre es obligatorio." }, 400);
+    const nom = String(b.nombre).trim();
+    const existe = await env.DB.prepare("SELECT id FROM ubicaciones WHERE UPPER(nombre)=UPPER(?)").bind(nom).first();
+    if (existe) return json({ error: `Ya existe la ubicación "${nom}".` }, 400);
+    const res = await env.DB.prepare(
+      "INSERT INTO ubicaciones (nombre, activo) VALUES (?, 1)"
+    ).bind(nom).run();
+    await audit(env, user.id, "crear", "ubicaciones", res.meta.last_row_id, null, b);
+    return json({ ok: true, id: res.meta.last_row_id });
+  }
+
+  if (path === "/api/ubicaciones" && req.method === "PUT") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (user.rol !== "administrador") return json({ error: "Solo el administrador puede editar ubicaciones." }, 403);
+    const b = await req.json();
+    if (!b.id || !b.nombre || !String(b.nombre).trim()) return json({ error: "Falta la ubicación o el nombre." }, 400);
+    const nom = String(b.nombre).trim();
+    const existe = await env.DB.prepare("SELECT id FROM ubicaciones WHERE UPPER(nombre)=UPPER(?) AND id!=?").bind(nom, b.id).first();
+    if (existe) return json({ error: `Ya existe la ubicación "${nom}".` }, 400);
+    await env.DB.prepare(
+      "UPDATE ubicaciones SET nombre=?, activo=? WHERE id=?"
+    ).bind(nom, b.activo ? 1 : 0, b.id).run();
+    await audit(env, user.id, "editar", "ubicaciones", b.id, null, b);
+    return json({ ok: true });
+  }
+
+  // ==========================================================
+  // ENTREGA UNIFICADA (8E): materiales/repuestos + herramientas en una ventana
+  // ==========================================================
+  // el dia acumulado de un trabajador: salidas + prestamos con hora
+  if (path === "/api/entregas/dia" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const sp2 = new URL(req.url).searchParams;
+    const trabajador_id = parseInt(sp2.get("trabajador_id")) || null;
+    const fecha = sp2.get("fecha");
+    if (!trabajador_id || !fecha) return json({ error: "Faltan trabajador o fecha." }, 400);
+    const sal = await env.DB.prepare(
+      `SELECT s.id, s.fecha, s.hora, s.cantidad, s.costo_total, s.faltante,
+              COALESCE((SELECT SUM(d.cantidad) FROM devoluciones_almacen d WHERE d.salida_id = s.id),0) AS devuelto,
+              m.codigo AS material_codigo, m.nombre AS material, m.unidad, m.tipo AS material_tipo,
+              l.nombre AS lote, u.nombre AS ubicacion, lb.nombre AS labor
+       FROM salidas_almacen s
+       JOIN materiales m ON m.id = s.material_id
+       LEFT JOIN lotes l ON l.id = s.lote_id
+       LEFT JOIN ubicaciones u ON u.id = s.ubicacion_id
+       LEFT JOIN labores lb ON lb.id = s.labor_id
+       WHERE s.trabajador_id = ? AND s.fecha = ?
+       ORDER BY s.hora DESC, s.id DESC LIMIT 200`
+    ).bind(trabajador_id, fecha).all();
+    const pre = await env.DB.prepare(
+      `SELECT p.id, p.fecha_prestamo, p.hora, p.fecha_devolucion, p.volvio_danada, p.nota,
+              h.codigo, h.nombre AS herramienta
+       FROM prestamos_herramientas p
+       JOIN herramientas h ON h.id = p.herramienta_id
+       WHERE p.trabajador_id = ? AND p.fecha_prestamo = ?
+       ORDER BY p.hora DESC, p.id DESC LIMIT 100`
+    ).bind(trabajador_id, fecha).all();
+    return json({ salidas: sal.results, prestamos: pre.results });
+  }
+
+  // plan del dia del trabajador (para precargar destino en la entrega)
+  if (path === "/api/plan/hoy" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const sp2 = new URL(req.url).searchParams;
+    const trabajador_id = parseInt(sp2.get("trabajador_id")) || null;
+    const fecha = sp2.get("fecha");
+    if (!trabajador_id || !fecha) return json({ error: "Faltan trabajador o fecha." }, 400);
+    const { results } = await env.DB.prepare(
+      `SELECT ap.id, ap.labor_id, ap.lote_id, lb.nombre AS labor, l.nombre AS lote
+       FROM agenda_plan ap
+       LEFT JOIN labores lb ON lb.id = ap.labor_id
+       LEFT JOIN lotes l ON l.id = ap.lote_id
+       WHERE ap.trabajador_id = ? AND ap.fecha = ?
+       ORDER BY ap.id LIMIT 50`
+    ).bind(trabajador_id, fecha).all();
+    return json({ plan: results });
+  }
+
+  // guardar la entrega completa: una salida por linea de material/repuesto + prestamos
+  if (path === "/api/entrega" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!puedeAlmacen(user)) return json({ error: "Solo almacén o administración pueden registrar entregas." }, 403);
+    const b = await req.json();
+    if (!b.trabajador_id || !b.fecha) return json({ error: "Faltan trabajador o fecha." }, 400);
+    if (!Array.isArray(b.lineas) || b.lineas.length === 0) return json({ error: "La entrega no tiene líneas." }, 400);
+    const t = await env.DB.prepare("SELECT id FROM trabajadores WHERE id=? AND activo=1").bind(b.trabajador_id).first();
+    if (!t) return json({ error: "El trabajador no existe o está inactivo." }, 400);
+    const hora = b.hora || new Date().toTimeString().slice(0, 5);
+
+    let nSal = 0, nPres = 0, alertas = 0;
+    for (const ln of b.lineas) {
+      if (ln.tipo_linea === "herramienta") {
+        if (!ln.herramienta_id) return json({ error: "Hay una línea de herramienta sin herramienta elegida." }, 400);
+        const h = await env.DB.prepare("SELECT * FROM herramientas WHERE id=? AND activo=1").bind(ln.herramienta_id).first();
+        if (!h) return json({ error: "Hay una línea con una herramienta que no existe." }, 400);
+        if (h.estado !== "activa") return json({ error: `La herramienta "${h.nombre}" está "${h.estado}"; no se puede prestar.` }, 400);
+        const abierto = await env.DB.prepare(
+          "SELECT id FROM prestamos_herramientas WHERE herramienta_id=? AND fecha_devolucion IS NULL"
+        ).bind(ln.herramienta_id).first();
+        if (abierto) return json({ error: `La herramienta "${h.nombre}" ya tiene un préstamo abierto.` }, 400);
+        await env.DB.prepare(
+          "INSERT INTO prestamos_herramientas (herramienta_id, trabajador_id, fecha_prestamo, nota, registrado_por, hora) VALUES (?,?,?,?,?,?)"
+        ).bind(ln.herramienta_id, b.trabajador_id, b.fecha, ln.nota || null, user.id, hora).run();
+        nPres++;
+        continue;
+      }
+      // linea de material o repuesto: mismo PEPS que una salida normal
+      if (!ln.material_id || !ln.cantidad || !(parseFloat(ln.cantidad) > 0))
+        return json({ error: "Cada línea de material/repuesto necesita material y cantidad mayor a cero." }, 400);
+      const mat = await env.DB.prepare("SELECT * FROM materiales WHERE id=? AND activo=1").bind(ln.material_id).first();
+      if (!mat) return json({ error: "Hay una línea con un material que no existe." }, 400);
+
+      let queda = parseFloat(ln.cantidad);
+      let costoTotal = 0;
+      const usadas = [];
+      if (ln.centro_costo_id) {
+        const cc = await env.DB.prepare("SELECT id FROM centros_costo WHERE id=?").bind(ln.centro_costo_id).first();
+        if (!cc) return json({ error: `Centro de costo inválido en línea de ${mat.nombre}.` }, 400);
+      }
+      const capas = await env.DB.prepare(
+        "SELECT * FROM entradas_almacen WHERE material_id=? AND cantidad_actual>0 ORDER BY fecha, id"
+      ).bind(ln.material_id).all();
+      for (const capa of capas.results) {
+        if (queda <= 0) break;
+        const tomar = Math.min(queda, capa.cantidad_actual);
+        usadas.push({ entrada_id: capa.id, cantidad: tomar, precio: capa.precio_unitario });
+        if (capa.precio_unitario != null) costoTotal += tomar * capa.precio_unitario;
+        queda -= tomar;
+      }
+      const faltante = queda > 0.0001 ? queda : 0;
+      const resS = await env.DB.prepare(
+        `INSERT INTO salidas_almacen (fecha, material_id, trabajador_id, centro_costo_id, cantidad, costo_total, faltante, labor_id, lote_id, ubicacion_id, mantenimiento_id, nota, registrado_por, hora)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      ).bind(b.fecha, mat.id, b.trabajador_id, ln.centro_costo_id || null, ln.cantidad,
+             Math.round(costoTotal) || null, faltante, ln.labor_id || null, ln.lote_id || null,
+             ln.ubicacion_id || null, ln.mantenimiento_id || null, ln.nota || null, user.id, hora).run();
+      const salidaId = resS.meta.last_row_id;
+      for (const u of usadas) {
+        await env.DB.prepare("UPDATE entradas_almacen SET cantidad_actual = cantidad_actual - ? WHERE id=?").bind(u.cantidad, u.entrada_id).run();
+        await env.DB.prepare("INSERT INTO salida_capas (salida_id, entrada_id, cantidad, precio_unit) VALUES (?,?,?,?)").bind(salidaId, u.entrada_id, u.cantidad, u.precio).run();
+      }
+      if (faltante > 0) {
+        await crearPendiente(env, {
+          tipo: "resolver",
+          titulo: `Salida con faltante: ${mat.nombre}`,
+          detalle: `Se entregaron ${ln.cantidad} pero faltaron ${faltante} en inventario. Entrega #${salidaId} del ${b.fecha} ${hora}.`,
+          origen: "almacen",
+          ref_tabla: "salida_faltante",
+          ref_id: salidaId,
+          rol: "administrador",
+        });
+      }
+      await audit(env, user.id, "crear", "salidas_almacen", salidaId, null, { entrega_unificada: true, linea: ln });
+      // 8E: si la entrega no coincide con el plan, alertar al coordinador
+      const cruce = await salidaTieneActividad(env, { fecha: b.fecha, trabajador_id: b.trabajador_id, labor_id: ln.labor_id || null, lote_id: ln.lote_id || null });
+      if (!cruce) {
+        alertas++;
+        await crearPendiente(env, {
+          tipo: "resolver",
+          titulo: `Entrega fuera de plan: ${mat.nombre}`,
+          detalle: `Se entregó ${ln.cantidad} de ${mat.nombre} el ${b.fecha} ${hora} con destino/actividad que no coincide con lo planeado para este trabajador. Ajusta el Planificador o resuelve esta alerta.`,
+          origen: "almacen",
+          ref_tabla: "entrega_fuera_de_plan",
+          ref_id: salidaId,
+          rol: "coordinador",
+        });
+      }
+      nSal++;
+    }
+    return json({ ok: true, salidas: nSal, prestamos: nPres, alertas });
+  }
+
+  // ==========================================================
+  // EQUIPOS Y MANTENIMIENTOS (8F)
+  // ==========================================================
+  // listado con proximo preventivo (dias u horas, el que venza primero),
+  // costo acumulado y alerta automatica si un preventivo ya vencio
+  if (path === "/api/equipos" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const { results } = await env.DB.prepare(
+      `SELECT e.id, e.codigo, e.nombre, e.ubicacion_id, u.nombre AS ubicacion,
+              e.estado, e.frec_dias, e.frec_horas, e.nota,
+              (SELECT fecha FROM mantenimientos WHERE equipo_id=e.id ORDER BY fecha DESC, id DESC LIMIT 1) AS ult_mant_fecha,
+              (SELECT horometro FROM mantenimientos WHERE equipo_id=e.id AND horometro IS NOT NULL ORDER BY fecha DESC, id DESC LIMIT 1) AS base_horometro,
+              (SELECT lectura FROM equipo_horometro WHERE equipo_id=e.id ORDER BY fecha DESC, id DESC LIMIT 1) AS ult_lectura,
+              (SELECT fecha FROM equipo_horometro WHERE equipo_id=e.id ORDER BY fecha DESC, id DESC LIMIT 1) AS ult_lectura_fecha,
+              (SELECT COALESCE(SUM(s.costo_total),0) FROM salidas_almacen s WHERE s.mantenimiento_id IN (SELECT id FROM mantenimientos WHERE equipo_id=e.id))
+                + (SELECT COALESCE(SUM(costo_mano_obra),0) FROM mantenimientos WHERE equipo_id=e.id) AS costo_acumulado
+       FROM equipos e
+       LEFT JOIN ubicaciones u ON u.id = e.ubicacion_id
+       WHERE e.activo = 1
+       ORDER BY e.codigo`
+    ).all();
+    const hoy = new Date().toISOString().slice(0, 10);
+    const dsPorDia = 86400000;
+    const out = [];
+    for (const e of results) {
+      let vencido = false, faltan_dias = null, faltan_horas = null, proximo_txt = null;
+      // por dias: base = ultimo mantenimiento
+      if (e.frec_dias && e.ult_mant_fecha) {
+        const base = new Date(e.ult_mant_fecha + "T00:00:00").getTime();
+        const vence = base + e.frec_dias * dsPorDia;
+        faltan_dias = Math.ceil((vence - new Date(hoy + "T00:00:00").getTime()) / dsPorDia);
+        if (faltan_dias <= 0) vencido = true;
+      }
+      // por horas: base = horometro del ultimo mantenimiento (o 0), ultima lectura conocida
+      if (e.frec_horas && e.ult_lectura != null) {
+        const baseH = e.base_horometro != null ? e.base_horometro : 0;
+        faltan_horas = Math.round((e.frec_horas - (e.ult_lectura - baseH)) * 10) / 10;
+        if (faltan_horas <= 0) vencido = true;
+      }
+      if (e.frec_dias || e.frec_horas) {
+        const partes = [];
+        if (faltan_dias != null) partes.push(faltan_dias <= 0 ? "DÍAS VENCIDOS" : `faltan ${faltan_dias} día(s)`);
+        if (faltan_horas != null) partes.push(faltan_horas <= 0 ? "HORAS VENCIDAS" : `faltan ${faltan_horas} h`);
+        proximo_txt = partes.join(" · ") || "sin base aún";
+      }
+      if (vencido) {
+        await crearPendiente(env, {
+          tipo: "resolver",
+          titulo: `Preventivo vencido: ${e.nombre}`,
+          detalle: `El equipo ${e.codigo} · ${e.nombre} tiene un mantenimiento preventivo vencido (${proximo_txt}). Programa el mantenimiento; esta alerta se cierra sola al registrarlo.`,
+          origen: "equipos",
+          ref_tabla: "preventivo_vencido",
+          ref_id: e.id,
+          rol: "administrador",
+        });
+      }
+      out.push({ ...e, vencido, proximo_txt });
+    }
+    return json({ equipos: out });
+  }
+
+  if (path === "/api/equipos" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!puedeAlmacen(user)) return json({ error: "Solo administración o almacén pueden crear equipos." }, 403);
+    const b = await req.json();
+    if (!b.codigo || !String(b.codigo).trim() || !b.nombre || !String(b.nombre).trim())
+      return json({ error: "Código y nombre son obligatorios." }, 400);
+    const existe = await env.DB.prepare("SELECT id FROM equipos WHERE codigo=?").bind(String(b.codigo).trim()).first();
+    if (existe) return json({ error: `Ya existe un equipo con el código ${b.codigo}.` }, 400);
+    const res = await env.DB.prepare(
+      "INSERT INTO equipos (codigo, nombre, ubicacion_id, frec_dias, frec_horas, nota) VALUES (?,?,?,?,?,?)"
+    ).bind(String(b.codigo).trim(), String(b.nombre).trim(), b.ubicacion_id || null,
+           b.frec_dias ? parseInt(b.frec_dias) : null, b.frec_horas ? parseFloat(b.frec_horas) : null, b.nota || null).run();
+    await audit(env, user.id, "crear", "equipos", res.meta.last_row_id, null, b);
+    return json({ ok: true, id: res.meta.last_row_id });
+  }
+
+  if (path === "/api/equipos" && req.method === "PUT") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!puedeAlmacen(user)) return json({ error: "Solo administración o almacén pueden editar equipos." }, 403);
+    const b = await req.json();
+    if (!b.id || !b.nombre || !String(b.nombre).trim()) return json({ error: "Falta el equipo o el nombre." }, 400);
+    const estados = ["operativo", "en_mantenimiento", "fuera_servicio", "baja"];
+    if (b.estado && !estados.includes(b.estado)) return json({ error: "Estado no válido." }, 400);
+    const e0 = await env.DB.prepare("SELECT * FROM equipos WHERE id=?").bind(b.id).first();
+    if (!e0) return json({ error: "El equipo no existe." }, 404);
+    await env.DB.prepare(
+      "UPDATE equipos SET codigo=?, nombre=?, ubicacion_id=?, frec_dias=?, frec_horas=?, nota=?, estado=?, activo=? WHERE id=?"
+    ).bind(b.codigo ? String(b.codigo).trim() : e0.codigo, String(b.nombre).trim(), b.ubicacion_id !== undefined ? b.ubicacion_id : e0.ubicacion_id,
+           b.frec_dias !== undefined ? (b.frec_dias ? parseInt(b.frec_dias) : null) : e0.frec_dias,
+           b.frec_horas !== undefined ? (b.frec_horas ? parseFloat(b.frec_horas) : null) : e0.frec_horas,
+           b.nota !== undefined ? b.nota : e0.nota,
+           b.estado || e0.estado,
+           b.activo === undefined ? e0.activo : (b.activo ? 1 : 0), b.id).run();
+    await audit(env, user.id, "editar", "equipos", b.id, e0, b);
+    return json({ ok: true });
+  }
+
+  // lectura de horometro
+  if (path === "/api/equipos/horometro" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!puedeAlmacen(user)) return json({ error: "Solo administración o almacén pueden registrar el horómetro." }, 403);
+    const b = await req.json();
+    if (!b.equipo_id || !b.fecha || !(parseFloat(b.lectura) >= 0))
+      return json({ error: "Faltan equipo, fecha o lectura de horómetro." }, 400);
+    const e0 = await env.DB.prepare("SELECT id FROM equipos WHERE id=? AND activo=1").bind(b.equipo_id).first();
+    if (!e0) return json({ error: "El equipo no existe." }, 404);
+    await env.DB.prepare(
+      "INSERT INTO equipo_horometro (equipo_id, fecha, lectura, nota, registrado_por) VALUES (?,?,?,?,?)"
+    ).bind(b.equipo_id, b.fecha, parseFloat(b.lectura), b.nota || null, user.id).run();
+    await audit(env, user.id, "crear", "equipo_horometro", null, null, b);
+    return json({ ok: true });
+  }
+
+  // mantenimientos: historial con repuestos entregados reales
+  if (path === "/api/mantenimientos" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const sp3 = new URL(req.url).searchParams;
+    const equipoId = parseInt(sp3.get("equipo_id")) || null;
+    let q = `SELECT m.*, eq.codigo, eq.nombre AS equipo,
+               (SELECT COALESCE(SUM(s.costo_total),0) FROM salidas_almacen s WHERE s.mantenimiento_id = m.id) AS costo_repuestos,
+               (SELECT GROUP_CONCAT(mm.nombre || ' x' || s.cantidad, '; ') FROM salidas_almacen s JOIN materiales mm ON mm.id = s.material_id WHERE s.mantenimiento_id = m.id) AS repuestos_entregados
+             FROM mantenimientos m JOIN equipos eq ON eq.id = m.equipo_id`;
+    const binds = [];
+    if (equipoId) { q += " WHERE m.equipo_id = ?"; binds.push(equipoId); }
+    q += " ORDER BY m.fecha DESC, m.id DESC LIMIT 200";
+    const { results } = await env.DB.prepare(q).bind(...binds).all();
+    return json({ mantenimientos: results });
+  }
+
+  // registrar mantenimiento: el correctivo deja el equipo en mantenimiento;
+  // el horometro anotado tambien reinicia el contador de horas
+  if (path === "/api/mantenimientos" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!puedeAlmacen(user)) return json({ error: "Solo administración o almacén pueden registrar mantenimientos." }, 403);
+    const b = await req.json();
+    if (!b.equipo_id || !b.fecha || !["preventivo", "correctivo"].includes(b.tipo))
+      return json({ error: "Faltan equipo, fecha o tipo de mantenimiento." }, 400);
+    const e0 = await env.DB.prepare("SELECT * FROM equipos WHERE id=? AND activo=1").bind(b.equipo_id).first();
+    if (!e0) return json({ error: "El equipo no existe." }, 404);
+    const res = await env.DB.prepare(
+      `INSERT INTO mantenimientos (equipo_id, tipo, fecha, descripcion, repuestos_estimados, costo_mano_obra, horometro, registrado_por)
+       VALUES (?,?,?,?,?,?,?,?)`
+    ).bind(b.equipo_id, b.tipo, b.fecha, b.descripcion || null, b.repuestos_estimados || null,
+           b.costo_mano_obra ? parseFloat(b.costo_mano_obra) : null,
+           b.horometro != null && b.horometro !== "" ? parseFloat(b.horometro) : null, user.id).run();
+    if (b.tipo === "correctivo") {
+      await env.DB.prepare("UPDATE equipos SET estado='en_mantenimiento' WHERE id=?").bind(b.equipo_id).run();
+    }
+    if (b.horometro != null && b.horometro !== "") {
+      await env.DB.prepare(
+        "INSERT INTO equipo_horometro (equipo_id, fecha, lectura, nota, registrado_por) VALUES (?,?,?,?,?)"
+      ).bind(b.equipo_id, b.fecha, parseFloat(b.horometro), "Lectura en mantenimiento " + res.meta.last_row_id, user.id).run();
+    }
+    await resolverPendientesRef(env, "preventivo_vencido", b.equipo_id);
+    await audit(env, user.id, "crear", "mantenimientos", res.meta.last_row_id, null, b);
+    return json({ ok: true, id: res.meta.last_row_id });
+  }
+
+  // cerrar mantenimiento: el equipo vuelve a operativo
+  if (path === "/api/mantenimientos/cerrar" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!puedeAlmacen(user)) return json({ error: "Solo administración o almacén pueden cerrar mantenimientos." }, 403);
+    const b = await req.json();
+    if (!b.id) return json({ error: "Falta el mantenimiento." }, 400);
+    const m0 = await env.DB.prepare("SELECT * FROM mantenimientos WHERE id=?").bind(b.id).first();
+    if (!m0) return json({ error: "El mantenimiento no existe." }, 404);
+    if (!m0.cerrado_en) {
+      await env.DB.prepare("UPDATE mantenimientos SET cerrado_en=datetime('now') WHERE id=?").bind(b.id).run();
+      await env.DB.prepare("UPDATE equipos SET estado='operativo' WHERE id=?").bind(m0.equipo_id).run();
+      await audit(env, user.id, "cerrar", "mantenimientos", b.id, m0, b);
+    }
+    return json({ ok: true });
   }
 
   // ==========================================================
@@ -2494,6 +3013,7 @@ async function handleApi(req, env, path) {
   if (path === "/api/configuracion" && req.method === "GET") {
     const user = await currentUser(req, env);
     if (!user) return json({ error: "No autenticado." }, 401);
+    if (user.rol !== "administrador") return json({ error: "Solo el administrador puede ver la configuración." }, 403);
     const { results } = await env.DB.prepare(
       "SELECT clave, valor, descripcion, tipo FROM configuracion ORDER BY clave"
     ).all();

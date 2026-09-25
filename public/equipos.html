@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Equipos — La Siria</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;--ambar:#8a6d1b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}
+  nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}
+  nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .contenedor{max-width:1100px;margin:0 auto;padding:28px 24px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}
+  .sub{color:var(--gris);font-size:14px;margin-bottom:18px}
+  .tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--linea)}
+  .tab{padding:10px 18px;border:none;background:none;font-size:14px;font-weight:600;color:var(--gris);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+  .tab.activa{color:var(--verde-hondo);border-bottom-color:var(--verde)}
+  .panel{display:none}.panel.activo{display:block}
+  .barra{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .barra input,.barra select{padding:9px 12px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  .barra input.buscar{flex:1;min-width:200px}
+  .boton{background:var(--verde);color:#fff;border:none;padding:10px 16px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .boton.sec{background:#fff;color:var(--verde);border:1.5px solid var(--verde-claro)}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:640px}
+  th{background:#f2f1e8;text-align:left;padding:11px 14px;font-size:11.5px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea);white-space:nowrap}
+  td{padding:10px 14px;font-size:13px;border-bottom:1px solid #f4f3ec}
+  tr:last-child td{border-bottom:none}
+  .num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .existencia{font-weight:700}
+  .existencia.cero{color:var(--gris);font-weight:400}
+  .bajo-stock{color:var(--error);font-weight:600;font-size:11px}
+  .accion{background:none;border:1px solid var(--linea);border-radius:7px;padding:6px 10px;font-size:12.5px;cursor:pointer;color:var(--tinta);margin-right:4px}
+  .accion:hover{border-color:var(--verde-claro)}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+  small.dato{color:var(--gris);font-size:11px}
+  .alerta-banner{background:#f6e6e4;border:1px solid #e6c9c5;color:var(--error);padding:11px 15px;border-radius:9px;font-size:13.5px;margin-bottom:16px;display:none}
+  .alerta-banner.ver{display:block}
+  /* modales */
+  .modal-fondo{display:none;position:fixed;inset:0;background:rgba(29,59,42,.5);align-items:flex-start;justify-content:center;padding:24px;z-index:10;overflow:auto}
+  .modal-fondo.abierto{display:flex}
+  .modal{background:var(--crema);border-radius:14px;width:100%;max-width:500px;box-shadow:0 24px 60px rgba(0,0,0,.3);margin:auto}
+  .modal-cab{padding:20px 26px 12px;border-bottom:1px solid var(--linea)}
+  .modal-cab h2{font-size:18px;color:var(--verde-hondo);font-weight:650}
+  .modal-cuerpo{padding:18px 26px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .campo{margin-bottom:13px}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  input,select{width:100%;padding:9px 11px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .verif-caja{background:#fbf6e5;border:1px solid #ecdfae;border-radius:9px;padding:12px 14px;margin:12px 0;font-size:13px}
+  .verif-caja .exist{font-size:16px;font-weight:700;color:var(--verde-hondo)}
+  .modal-pie{padding:14px 26px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end}
+  .btn-sec{background:none;border:1px solid var(--linea);color:var(--tinta);padding:9px 15px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .aviso{padding:10px 13px;border-radius:8px;font-size:13.5px;margin-bottom:14px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+  .aviso.warn{background:#fbf6e5;color:var(--ambar);border:1px solid #ecdfae;display:block}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+  .capa-row{font-size:12.5px;padding:5px 0;border-bottom:1px solid #f0efe6;display:flex;justify-content:space-between}
+
+nav.menu{display:flex;gap:2px;align-items:flex-start}
+.grupo{position:relative}
+.grupo-titulo{display:block;padding:7px 11px;font-size:12.5px;font-weight:600;color:#cddbd0;cursor:pointer;border-radius:6px;white-space:nowrap}
+.grupo-titulo:hover,.grupo.abierto .grupo-titulo{background:rgba(255,255,255,.14);color:#fff}
+.submenu{display:none;position:absolute;top:100%;left:0;min-width:205px;background:#fff;border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.25);padding:6px;z-index:60}
+.grupo:hover .submenu,.grupo.abierto .submenu{display:block}
+.submenu a{display:block;padding:8px 12px;border-radius:6px;color:#2c4a33;font-size:13px;white-space:nowrap}
+.submenu a:hover{background:#eef4ee;color:#1d3a24}
+.submenu a.activo{background:var(--verde);color:#fff;font-weight:700}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+<nav class="menu">
+  <div class="grupo">
+    <span class="grupo-titulo">Operaciones</span>
+    <div class="submenu">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Planeación</span>
+    <div class="submenu">
+      <a href="/planificador.html">Planificador</a>
+      <a href="/asignacion.html">Asignación Coordinadores</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/deberser.html">Deber ser</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Recursos Humanos</span>
+    <div class="submenu">
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/jornada.html">Jornada Laboral</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html">Nómina</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Almacén</span>
+    <div class="submenu">
+      <a href="/almacen.html">Materiales</a>
+      <a href="/almacen.html?tipo=repuesto">Repuestos</a>
+      <a href="/herramientas.html">Herramientas</a>
+      <a href="/equipos.html">Equipos</a>
+    </div>
+  </div>
+  <div class="grupo" id="nav-grupo-admin" style="display:none">
+    <span class="grupo-titulo">Configuración</span>
+    <div class="submenu">
+      <a href="/configuracion.html">Configuración</a>
+      <a href="/usuarios.html">Usuarios</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/ubicaciones.html">Ubicaciones</a>
+      <a href="/materiales.html">Catálogo de materiales</a>
+    </div>
+  </div>
+</nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <h1>Equipos</h1>
+    <p class="sub">Maquinaria y equipos de la finca: mantenimientos preventivos (por días u horas) y correctivos, con repuestos y costos.</p>
+
+    <div id="nota-permiso" class="aviso" style="display:none">Solo administración y almacén pueden registrar mantenimientos, horómetros y cambios de estado.</div>
+
+    <div class="tabs">
+      <button class="tab activa" data-p="equipos" onclick="verTab('equipos')">Equipos</button>
+      <button class="tab" data-p="mantenimientos" onclick="verTab('mantenimientos')">Mantenimientos</button>
+    </div>
+
+    <!-- PANEL EQUIPOS -->
+    <div class="panel activo" id="p-equipos">
+      <div class="barra">
+        <input type="text" class="buscar" id="buscar" placeholder="Buscar equipo…" oninput="pintarEq()">
+        <button class="boton" id="btn-nuevo" onclick="abrirNuevo()" style="display:none;margin-left:auto">+ Nuevo equipo</button>
+      </div>
+      <div class="tabla-caja">
+        <table>
+          <thead><tr><th>Código</th><th>Nombre</th><th>Ubicación</th><th>Estado</th><th>Preventivo</th><th>Costo acum.</th><th></th></tr></thead>
+          <tbody id="cuerpo-eq"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL MANTENIMIENTOS -->
+    <div class="panel" id="p-mantenimientos">
+      <div class="barra">
+        <select id="f-equipo" onchange="cargarMants()"><option value="">Todos los equipos</option></select>
+      </div>
+      <div class="tabla-caja">
+        <table>
+          <thead><tr><th>Fecha</th><th>Equipo</th><th>Tipo</th><th>Descripción</th><th>Rep. estimados</th><th>Rep. entregados</th><th>Costo</th><th>Horómetro</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="cuerpo-mant"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal equipo -->
+  <div class="modal-fondo" id="modal-eq">
+    <div class="modal" style="max-width:460px">
+      <div class="modal-cab"><h2 id="me-titulo">Nuevo equipo</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-eq" class="aviso"></div>
+        <div class="campo"><label>Código único (ej. EQ-001)</label><input type="text" id="eq-codigo"></div>
+        <div class="campo"><label>Nombre</label><input type="text" id="eq-nombre"></div>
+        <div class="campo"><label>Ubicación</label><select id="eq-ubicacion"><option value="">— sin ubicación —</option></select></div>
+        <div class="grid2">
+          <div class="campo"><label>Preventivo cada (días, opc.)</label><input type="number" id="eq-fdias" min="1"></div>
+          <div class="campo"><label>o cada (horas, opc.)</label><input type="number" id="eq-fhoras" min="1" step="0.1"></div>
+        </div>
+        <div class="campo"><label>Nota (opcional)</label><input type="text" id="eq-nota"></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarEq()">Cancelar</button>
+        <button class="boton" onclick="guardarEq()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal horometro -->
+  <div class="modal-fondo" id="modal-hrm">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-cab"><h2>Registrar horómetro</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-hrm" class="aviso"></div>
+        <div class="campo"><label>Equipo</label><input type="text" id="hrm-info" disabled></div>
+        <div class="grid2">
+          <div class="campo"><label>Fecha</label><input type="date" id="hrm-fecha"></div>
+          <div class="campo"><label>Lectura (horas)</label><input type="number" id="hrm-lectura" step="0.1" min="0"></div>
+        </div>
+        <div class="campo"><label>Nota (opcional)</label><input type="text" id="hrm-nota"></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarHrm()">Cancelar</button>
+        <button class="boton" onclick="guardarHrm()">Registrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal mantenimiento -->
+  <div class="modal-fondo" id="modal-mant">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-cab"><h2>Registrar mantenimiento</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-mant" class="aviso"></div>
+        <div class="campo"><label>Equipo</label><input type="text" id="mt-info" disabled></div>
+        <div class="grid2">
+          <div class="campo"><label>Tipo</label><select id="mt-tipo"><option value="preventivo">Preventivo</option><option value="correctivo">Correctivo</option></select></div>
+          <div class="campo"><label>Fecha</label><input type="date" id="mt-fecha"></div>
+        </div>
+        <div class="campo"><label>Descripción del trabajo</label><input type="text" id="mt-desc"></div>
+        <div class="campo"><label>Repuestos estimados (descriptivo)</label><input type="text" id="mt-rep" placeholder="Ej: kit de sellos, 2 filtros"></div>
+        <div class="grid2">
+          <div class="campo"><label>Costo mano de obra ($, opc.)</label><input type="number" id="mt-mo" step="1000" min="0"></div>
+          <div class="campo"><label>Horómetro al momento (opc.)</label><input type="number" id="mt-hrm" step="0.1" min="0"></div>
+        </div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarModalMant()">Cancelar</button>
+        <button class="boton" onclick="guardarMant()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let puedeEditar=false, equipos=[], mants=[], ubis=[], editEqId=null, hrmEqId=null, mantEqId=null;
+
+async function init(){
+  const rme=await fetch("/api/me");
+  if(!rme.ok){ window.location.href="/"; return; }
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  if(me.rol==="administrador"){ const nga=document.getElementById("nav-grupo-admin"); if(nga) nga.style.display="flex"; }
+  puedeEditar=(me.rol==="administrador"||me.rol==="almacen");
+  if(puedeEditar) document.getElementById("btn-nuevo").style.display="inline-block";
+  else document.getElementById("nota-permiso").style.display="block";
+  try{ const r=await fetch("/api/ubicaciones"); if(r.ok){ const d=await r.json(); ubis=(d.ubicaciones||[]).filter(u=>u.activo); } }catch(e){}
+  await cargarEquipos();
+  await cargarMants();
+}
+function verTab(p){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("activa",t.dataset.p===p));
+  document.querySelectorAll(".panel").forEach(pl=>pl.classList.remove("activo"));
+  document.getElementById("p-"+p).classList.add("activo");
+}
+async function cargarEquipos(){
+  const r=await fetch("/api/equipos"); if(!r.ok) return;
+  const d=await r.json(); equipos=d.equipos||[];
+  const sel=document.getElementById("eq-ubicacion");
+  sel.innerHTML='<option value="">— sin ubicación —</option>'+ubis.map(u=>`<option value="${u.id}">${escapar(u.nombre)}</option>`).join("");
+  const fil=document.getElementById("f-equipo");
+  fil.innerHTML='<option value="">Todos los equipos</option>'+equipos.map(e2=>`<option value="${e2.id}">${escapar(e2.codigo+" · "+e2.nombre)}</option>`).join("");
+  pintarEq();
+}
+function badgeEstado(e){
+  if(e==='operativo') return '<span style="color:var(--verde);font-weight:700;font-size:11px">OPERATIVO</span>';
+  if(e==='en_mantenimiento') return '<span style="color:var(--ambar);font-weight:700;font-size:11px">EN MANTENIMIENTO</span>';
+  if(e==='fuera_servicio') return '<span style="color:var(--error);font-weight:700;font-size:11px">FUERA DE SERVICIO</span>';
+  return '<span style="color:var(--gris);font-weight:700;font-size:11px">DE BAJA</span>';
+}
+function pintarEq(){
+  const q=(document.getElementById("buscar").value||"").toLowerCase();
+  const tb=document.getElementById("cuerpo-eq"); tb.innerHTML="";
+  const filas=equipos.filter(e=>!q||(e.codigo+" "+e.nombre).toLowerCase().includes(q));
+  if(!filas.length){ tb.innerHTML='<tr><td colspan="7" style="color:var(--gris);text-align:center;padding:20px">Sin equipos registrados.</td></tr>'; return; }
+  filas.forEach(e=>{
+    let prevTxt='<small class="dato">sin programar</small>';
+    if(e.proximo_txt){
+      prevTxt=e.vencido
+        ? `<span style="color:var(--error);font-size:11px;font-weight:700">VENCIDO · ${escapar(e.proximo_txt)}</span>`
+        : `<span style="color:var(--verde);font-size:11px">${escapar(e.proximo_txt)}</span>`;
+    }
+    let acc="";
+    if(puedeEditar){
+      acc+=`<button class="accion" onclick="abrirMant(${e.id})">Mantenimiento</button>`;
+      acc+=`<button class="accion" onclick="abrirHrm(${e.id})">Horómetro</button>`;
+      acc+=`<button class="accion" onclick="abrirEditar(${e.id})">Editar</button>`;
+      if(e.estado!=='fuera_servicio') acc+=`<button class="accion" onclick="cambiarEstado(${e.id},'fuera_servicio')">Fuera de servicio</button>`;
+      if(e.estado!=='operativo'&&e.estado!=='baja') acc+=`<button class="accion" onclick="cambiarEstado(${e.id},'operativo')">Operativo</button>`;
+    }
+    tb.insertAdjacentHTML("beforeend",`<tr>
+      <td><b>${escapar(e.codigo)}</b></td>
+      <td>${escapar(e.nombre)}${e.nota?` <small class="dato">${escapar(e.nota)}</small>`:""}</td>
+      <td>${escapar(e.ubicacion||"—")}</td>
+      <td>${badgeEstado(e.estado)}</td>
+      <td>${prevTxt}${e.frec_dias||e.frec_horas?`<br><small class="dato">cada ${e.frec_dias?e.frec_dias+" día(s)":""}${e.frec_dias&&e.frec_horas?" o ":""}${e.frec_horas?e.frec_horas+" h":""}</small>`:""}</td>
+      <td class="num">${e.costo_acumulado?"$"+Number(e.costo_acumulado).toLocaleString('es-CO'):"—"}</td>
+      <td>${acc}</td>
+    </tr>`);
+  });
+}
+async function cargarMants(){
+  const fid=document.getElementById("f-equipo").value;
+  const r=await fetch("/api/mantenimientos"+(fid?"?equipo_id="+fid:"")); if(!r.ok) return;
+  const d=await r.json(); mants=d.mantenimientos||[];
+  const tb=document.getElementById("cuerpo-mant"); tb.innerHTML="";
+  if(!mants.length){ tb.innerHTML='<tr><td colspan="10" style="color:var(--gris);text-align:center;padding:20px">Sin mantenimientos registrados.</td></tr>'; return; }
+  mants.forEach(m=>{
+    const costo=(m.costo_mano_obra||0)+(m.costo_repuestos||0);
+    const abierto=!m.cerrado_en;
+    tb.insertAdjacentHTML("beforeend",`<tr>
+      <td>${m.fecha}</td>
+      <td><b>${escapar(m.codigo)}</b> ${escapar(m.equipo)}</td>
+      <td>${m.tipo==='preventivo'?'<span style="color:var(--verde);font-size:11px;font-weight:700">PREVENTIVO</span>':'<span style="color:var(--ambar);font-size:11px;font-weight:700">CORRECTIVO</span>'}</td>
+      <td>${escapar(m.descripcion||"—")}</td>
+      <td>${escapar(m.repuestos_estimados||"—")}</td>
+      <td>${escapar(m.repuestos_entregados||"—")}</td>
+      <td class="num">${costo?"$"+Number(costo).toLocaleString('es-CO'):"—"}</td>
+      <td class="num">${m.horometro!=null?Number(m.horometro).toLocaleString('es-CO'):"—"}</td>
+      <td>${abierto?'<span style="color:var(--ambar);font-size:11px;font-weight:700">ABIERTO</span>':'<span style="color:var(--gris);font-size:11px">cerrado</span>'}</td>
+      <td>${abierto&&puedeEditar?`<button class="accion" onclick="cerrarMant(${m.id})">Cerrar</button>`:""}</td>
+    </tr>`);
+  });
+}
+function abrirNuevo(){
+  editEqId=null;
+  document.getElementById("me-titulo").textContent="Nuevo equipo";
+  document.getElementById("eq-codigo").value=""; document.getElementById("eq-nombre").value="";
+  document.getElementById("eq-ubicacion").value=""; document.getElementById("eq-fdias").value="";
+  document.getElementById("eq-fhoras").value=""; document.getElementById("eq-nota").value="";
+  const av=document.getElementById("aviso-eq"); av.className="aviso"; av.textContent="";
+  document.getElementById("modal-eq").classList.add("abierto");
+}
+function abrirEditar(id){
+  const e=equipos.find(x=>x.id===id); if(!e) return;
+  editEqId=id;
+  document.getElementById("me-titulo").textContent="Editar equipo";
+  document.getElementById("eq-codigo").value=e.codigo; document.getElementById("eq-nombre").value=e.nombre;
+  document.getElementById("eq-ubicacion").value=e.ubicacion_id||""; document.getElementById("eq-fdias").value=e.frec_dias||"";
+  document.getElementById("eq-fhoras").value=e.frec_horas||""; document.getElementById("eq-nota").value=e.nota||"";
+  const av=document.getElementById("aviso-eq"); av.className="aviso"; av.textContent="";
+  document.getElementById("modal-eq").classList.add("abierto");
+}
+function cerrarEq(){ document.getElementById("modal-eq").classList.remove("abierto"); }
+async function guardarEq(){
+  const codigo=document.getElementById("eq-codigo").value.trim();
+  const nombre=document.getElementById("eq-nombre").value.trim();
+  const av=document.getElementById("aviso-eq");
+  if(!codigo||!nombre){ av.className="aviso error"; av.textContent="Código y nombre son obligatorios."; return; }
+  const body={codigo:codigo,nombre:nombre,ubicacion_id:document.getElementById("eq-ubicacion").value||null,
+    frec_dias:document.getElementById("eq-fdias").value||null,frec_horas:document.getElementById("eq-fhoras").value||null,
+    nota:document.getElementById("eq-nota").value.trim()||null};
+  const r=await fetch("/api/equipos",{method:editEqId?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(editEqId?{id:editEqId,...body}:body)});
+  const d=await r.json();
+  if(!r.ok){ av.className="aviso error"; av.textContent=d.error||"No se pudo guardar."; return; }
+  cerrarEq(); cargarEquipos();
+}
+async function cambiarEstado(id,estado){
+  const e=equipos.find(x=>x.id===id); if(!e) return;
+  if(!confirm(`¿Cambiar ${e.nombre} a "${estado.replace(/_/g," ").toUpperCase()}"?`)) return;
+  const r=await fetch("/api/equipos",{method:"PUT",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({id:id,codigo:e.codigo,nombre:e.nombre,ubicacion_id:e.ubicacion_id,frec_dias:e.frec_dias,frec_horas:e.frec_horas,nota:e.nota,estado:estado})});
+  if(!r.ok){ const d=await r.json(); alert(d.error||"No se pudo cambiar."); return; }
+  cargarEquipos();
+}
+function abrirHrm(id){
+  const e=equipos.find(x=>x.id===id); if(!e) return;
+  hrmEqId=id;
+  document.getElementById("hrm-info").value=e.codigo+" · "+e.nombre;
+  document.getElementById("hrm-fecha").value=new Date().toISOString().slice(0,10);
+  document.getElementById("hrm-lectura").value=e.ult_lectura!=null?e.ult_lectura:"";
+  document.getElementById("hrm-nota").value="";
+  const av=document.getElementById("aviso-hrm"); av.className="aviso"; av.textContent="";
+  document.getElementById("modal-hrm").classList.add("abierto");
+}
+function cerrarHrm(){ document.getElementById("modal-hrm").classList.remove("abierto"); hrmEqId=null; }
+async function guardarHrm(){
+  const av=document.getElementById("aviso-hrm");
+  const lectura=parseFloat(document.getElementById("hrm-lectura").value);
+  if(!(lectura>=0)){ av.className="aviso error"; av.textContent="Escribe la lectura del horómetro."; return; }
+  const r=await fetch("/api/equipos/horometro",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({equipo_id:hrmEqId,fecha:document.getElementById("hrm-fecha").value,lectura:lectura,nota:document.getElementById("hrm-nota").value||null})});
+  const d=await r.json();
+  if(!r.ok){ av.className="aviso error"; av.textContent=d.error||"No se pudo registrar."; return; }
+  cerrarHrm(); cargarEquipos();
+}
+function abrirMant(id){
+  const e=equipos.find(x=>x.id===id); if(!e) return;
+  mantEqId=id;
+  document.getElementById("mt-info").value=e.codigo+" · "+e.nombre;
+  document.getElementById("mt-fecha").value=new Date().toISOString().slice(0,10);
+  document.getElementById("mt-tipo").value="preventivo";
+  document.getElementById("mt-desc").value=""; document.getElementById("mt-rep").value="";
+  document.getElementById("mt-mo").value=""; document.getElementById("mt-hrm").value=e.ult_lectura!=null?e.ult_lectura:"";
+  const av=document.getElementById("aviso-mant"); av.className="aviso"; av.textContent="";
+  document.getElementById("modal-mant").classList.add("abierto");
+}
+function cerrarModalMant(){ document.getElementById("modal-mant").classList.remove("abierto"); mantEqId=null; }
+async function guardarMant(){
+  const av=document.getElementById("aviso-mant");
+  const r=await fetch("/api/mantenimientos",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({equipo_id:mantEqId,tipo:document.getElementById("mt-tipo").value,fecha:document.getElementById("mt-fecha").value,
+      descripcion:document.getElementById("mt-desc").value.trim()||null,repuestos_estimados:document.getElementById("mt-rep").value.trim()||null,
+      costo_mano_obra:document.getElementById("mt-mo").value||null,horometro:document.getElementById("mt-hrm").value||null})});
+  const d=await r.json();
+  if(!r.ok){ av.className="aviso error"; av.textContent=d.error||"No se pudo registrar."; return; }
+  cerrarModalMant(); cargarEquipos(); cargarMants();
+}
+async function cerrarMant(id){
+  if(!confirm("¿Cerrar este mantenimiento? El equipo volverá a OPERATIVO.")) return;
+  const r=await fetch("/api/mantenimientos/cerrar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:id})});
+  if(!r.ok){ const d=await r.json(); alert(d.error||"No se pudo cerrar."); return; }
+  cargarEquipos(); cargarMants();
+}
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+init();
+</script>
+</body>
+</html>

@@ -68,6 +68,16 @@
   .aviso{padding:10px 13px;border-radius:8px;font-size:13.5px;margin-bottom:14px;display:none}
   .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
   .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+
+nav.menu{display:flex;gap:2px;align-items:flex-start}
+.grupo{position:relative}
+.grupo-titulo{display:block;padding:7px 11px;font-size:12.5px;font-weight:600;color:#cddbd0;cursor:pointer;border-radius:6px;white-space:nowrap}
+.grupo-titulo:hover,.grupo.abierto .grupo-titulo{background:rgba(255,255,255,.14);color:#fff}
+.submenu{display:none;position:absolute;top:100%;left:0;min-width:205px;background:#fff;border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.25);padding:6px;z-index:60}
+.grupo:hover .submenu,.grupo.abierto .submenu{display:block}
+.submenu a{display:block;padding:8px 12px;border-radius:6px;color:#2c4a33;font-size:13px;white-space:nowrap}
+.submenu a:hover{background:#eef4ee;color:#1d3a24}
+.submenu a.activo{background:var(--verde);color:#fff;font-weight:700}
 </style>
 </head>
 <body>
@@ -78,23 +88,52 @@
       </svg>
       <span>Finca La Siria</span>
     </div>
-    <nav>
+    <nav class="menu">
+  <div class="grupo">
+    <span class="grupo-titulo">Operaciones</span>
+    <div class="submenu">
       <a href="/dashboard.html">Dashboard</a>
       <a href="/reporte.html">Reporte</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Planeación</span>
+    <div class="submenu">
       <a href="/planificador.html">Planificador</a>
-      <a href="/deberser.html">Deber ser</a>
-      <a href="/jornada.html">Jornada</a>
+      <a href="/asignacion.html">Asignación Coordinadores</a>
       <a href="/labores.html">Labores</a>
-      <a href="/lotes.html">Lotes</a>
-      <a href="/asignacion.html">Asignación</a>
-      <a href="/materiales.html" class="activo">Materiales</a>
-      <a href="/almacen.html">Almacén</a>
+      <a href="/deberser.html">Deber ser</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Recursos Humanos</span>
+    <div class="submenu">
       <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/jornada.html">Jornada Laboral</a>
       <a href="/festivos.html">Festivos</a>
       <a href="/nomina.html">Nómina</a>
-      <a href="/configuracion.html" id="nav-config" style="display:none">Configuración</a>
-      <a href="/usuarios.html" id="nav-usuarios" style="display:none">Usuarios</a>
-    </nav>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Almacén</span>
+    <div class="submenu">
+      <a href="/almacen.html">Materiales</a>
+      <a href="/almacen.html?tipo=repuesto">Repuestos</a>
+      <a href="/herramientas.html">Herramientas</a>
+      <a href="/equipos.html">Equipos</a>
+    </div>
+  </div>
+  <div class="grupo" id="nav-grupo-admin" style="display:none">
+    <span class="grupo-titulo">Configuración</span>
+    <div class="submenu">
+      <a href="/configuracion.html">Configuración</a>
+      <a href="/usuarios.html">Usuarios</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/ubicaciones.html">Ubicaciones</a>
+      <a href="/materiales.html" class="activo">Catálogo de materiales</a>
+    </div>
+  </div>
+</nav>
     <div class="usuario-actual">
       <span id="quien"></span>
       <button class="salir" onclick="salir()">Salir</button>
@@ -139,6 +178,7 @@
         <div class="grid3">
           <div class="campo"><label>Código</label><input type="text" id="m-codigo"></div>
           <div class="campo" style="grid-column:span 2"><label>Nombre (con presentación/peso)</label><input type="text" id="m-nombre" placeholder="Ej: Abono KCl x 50kg"></div>
+          <div class="campo"><label>Tipo</label><select id="m-tipo"><option value="material">Material</option><option value="repuesto">Repuesto</option></select></div>
         </div>
         <div class="grid2">
           <div class="campo"><label>Unidad de uso</label><input type="text" id="m-unidad" placeholder="kg, lt, und, m"></div>
@@ -188,8 +228,8 @@ async function init(){
   if(!rme.ok){ window.location.href="/"; return; }
   const me=await rme.json();
   document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
-  if(me.rol==="administrador") document.getElementById("nav-usuarios").style.display="inline-block";
-    const nc=document.getElementById("nav-config"); if(nc) nc.style.display="inline-block";
+  if(me.rol==="administrador"){const nga=document.getElementById("nav-grupo-admin"); if(nga) nga.style.display="flex";}
+    
   puedeEditar=(me.rol==="administrador"||me.rol==="almacen");
   if(puedeEditar){
     document.getElementById("btn-nuevo").style.display="inline-block";
@@ -257,6 +297,7 @@ function editar(m){
   document.getElementById("modal-titulo").textContent="Editar material";
   document.getElementById("m-codigo").value=m.codigo||"";
   document.getElementById("m-nombre").value=m.nombre||"";
+  const mtSel=document.getElementById("m-tipo"); if(mtSel&&x.tipo) mtSel.value=x.tipo;
   document.getElementById("m-unidad").value=m.unidad||"";
   document.getElementById("m-precio").value=m.precio_unitario??"";
   document.getElementById("m-unicompra").value=m.unidad_compra||"";
@@ -282,7 +323,8 @@ async function guardar(){
     unidad_compra:document.getElementById("m-unicompra").value.trim()||null,
     peso_presentacion:document.getElementById("m-peso").value?parseFloat(document.getElementById("m-peso").value):null,
     unidad_peso:document.getElementById("m-unipeso").value.trim()||null,
-    centros:cc
+    centros:cc,
+    tipo:document.getElementById("m-tipo").value
   };
   btn.disabled=true;
   const url=editandoId?`/api/materiales/${editandoId}`:"/api/materiales";
@@ -308,7 +350,7 @@ async function crearCentro(){
   const aviso=document.getElementById("aviso-centros");
   const nombre=document.getElementById("nuevo-centro").value.trim();
   if(!nombre){ aviso.textContent="Escribe el nombre."; aviso.className="aviso error"; return; }
-  const r=await fetch("/api/centros-costo",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre})});
+  const r=await fetch("/api/centros-costo",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre, tipo:document.getElementById("m-tipo").value})});
   const d=await r.json();
   if(!r.ok){ aviso.textContent=d.error||"No se pudo crear."; aviso.className="aviso error"; return; }
   document.getElementById("nuevo-centro").value="";
@@ -355,5 +397,15 @@ init();
 })();
 </script>
 
+<script>
+(function(){
+  function cerrarTodos(excepto){document.querySelectorAll('.grupo.abierto').forEach(g=>{if(g!==excepto)g.classList.remove('abierto')});}
+  document.addEventListener('click',function(e){
+    const t=e.target.closest('.grupo-titulo');
+    if(t){const g=t.parentElement;const ab=g.classList.contains('abierto');cerrarTodos(g);g.classList.toggle('abierto',!ab);}
+    else cerrarTodos(null);
+  });
+})();
+</script>
 </body>
 </html>

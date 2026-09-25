@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Herramientas — La Siria</title>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;--ambar:#8a6d1b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}
+  nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}
+  nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .contenedor{max-width:1100px;margin:0 auto;padding:28px 24px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}
+  .sub{color:var(--gris);font-size:14px;margin-bottom:18px}
+  .tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--linea)}
+  .tab{padding:10px 18px;border:none;background:none;font-size:14px;font-weight:600;color:var(--gris);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+  .tab.activa{color:var(--verde-hondo);border-bottom-color:var(--verde)}
+  .panel{display:none}.panel.activo{display:block}
+  .barra{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .barra input,.barra select{padding:9px 12px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  .barra input.buscar{flex:1;min-width:200px}
+  .boton{background:var(--verde);color:#fff;border:none;padding:10px 16px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .boton.sec{background:#fff;color:var(--verde);border:1.5px solid var(--verde-claro)}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:640px}
+  th{background:#f2f1e8;text-align:left;padding:11px 14px;font-size:11.5px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea);white-space:nowrap}
+  td{padding:10px 14px;font-size:13px;border-bottom:1px solid #f4f3ec}
+  tr:last-child td{border-bottom:none}
+  .num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .existencia{font-weight:700}
+  .existencia.cero{color:var(--gris);font-weight:400}
+  .bajo-stock{color:var(--error);font-weight:600;font-size:11px}
+  .accion{background:none;border:1px solid var(--linea);border-radius:7px;padding:6px 10px;font-size:12.5px;cursor:pointer;color:var(--tinta);margin-right:4px}
+  .accion:hover{border-color:var(--verde-claro)}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+  small.dato{color:var(--gris);font-size:11px}
+  .alerta-banner{background:#f6e6e4;border:1px solid #e6c9c5;color:var(--error);padding:11px 15px;border-radius:9px;font-size:13.5px;margin-bottom:16px;display:none}
+  .alerta-banner.ver{display:block}
+  /* modales */
+  .modal-fondo{display:none;position:fixed;inset:0;background:rgba(29,59,42,.5);align-items:flex-start;justify-content:center;padding:24px;z-index:10;overflow:auto}
+  .modal-fondo.abierto{display:flex}
+  .modal{background:var(--crema);border-radius:14px;width:100%;max-width:500px;box-shadow:0 24px 60px rgba(0,0,0,.3);margin:auto}
+  .modal-cab{padding:20px 26px 12px;border-bottom:1px solid var(--linea)}
+  .modal-cab h2{font-size:18px;color:var(--verde-hondo);font-weight:650}
+  .modal-cuerpo{padding:18px 26px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .campo{margin-bottom:13px}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  input,select{width:100%;padding:9px 11px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .verif-caja{background:#fbf6e5;border:1px solid #ecdfae;border-radius:9px;padding:12px 14px;margin:12px 0;font-size:13px}
+  .verif-caja .exist{font-size:16px;font-weight:700;color:var(--verde-hondo)}
+  .modal-pie{padding:14px 26px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end}
+  .btn-sec{background:none;border:1px solid var(--linea);color:var(--tinta);padding:9px 15px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .aviso{padding:10px 13px;border-radius:8px;font-size:13.5px;margin-bottom:14px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+  .aviso.warn{background:#fbf6e5;color:var(--ambar);border:1px solid #ecdfae;display:block}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+  .capa-row{font-size:12.5px;padding:5px 0;border-bottom:1px solid #f0efe6;display:flex;justify-content:space-between}
+
+nav.menu{display:flex;gap:2px;align-items:flex-start}
+.grupo{position:relative}
+.grupo-titulo{display:block;padding:7px 11px;font-size:12.5px;font-weight:600;color:#cddbd0;cursor:pointer;border-radius:6px;white-space:nowrap}
+.grupo-titulo:hover,.grupo.abierto .grupo-titulo{background:rgba(255,255,255,.14);color:#fff}
+.submenu{display:none;position:absolute;top:100%;left:0;min-width:205px;background:#fff;border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.25);padding:6px;z-index:60}
+.grupo:hover .submenu,.grupo.abierto .submenu{display:block}
+.submenu a{display:block;padding:8px 12px;border-radius:6px;color:#2c4a33;font-size:13px;white-space:nowrap}
+.submenu a:hover{background:#eef4ee;color:#1d3a24}
+.submenu a.activo{background:var(--verde);color:#fff;font-weight:700}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+    <nav class="menu">
+  <div class="grupo">
+    <span class="grupo-titulo">Operaciones</span>
+    <div class="submenu">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html">Reporte</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Planeación</span>
+    <div class="submenu">
+      <a href="/planificador.html">Planificador</a>
+      <a href="/asignacion.html">Asignación Coordinadores</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/deberser.html">Deber ser</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Recursos Humanos</span>
+    <div class="submenu">
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/jornada.html">Jornada Laboral</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html">Nómina</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Almacén</span>
+    <div class="submenu">
+      <a href="/almacen.html">Materiales</a>
+      <a href="/almacen.html?tipo=repuesto">Repuestos</a>
+      <a href="/herramientas.html" class="activo">Herramientas</a>
+      <a href="/equipos.html">Equipos</a>
+    </div>
+  </div>
+  <div class="grupo" id="nav-grupo-admin" style="display:none">
+    <span class="grupo-titulo">Configuración</span>
+    <div class="submenu">
+      <a href="/configuracion.html">Configuración</a>
+      <a href="/usuarios.html">Usuarios</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/ubicaciones.html">Ubicaciones</a>
+      <a href="/materiales.html">Catálogo de materiales</a>
+    </div>
+  </div>
+</nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <h1>Herramientas</h1>
+    <p class="sub">Control de herramientas individuales: préstamos a trabajadores, devoluciones y estados (activa / dañada / retirada).</p>
+
+    <div id="nota-permiso" class="aviso" style="display:none">Solo administración y almacén pueden registrar préstamos, devoluciones y cambios de estado.</div>
+
+    <div class="tabs">
+      <button class="tab activa" data-p="inventario" onclick="verTab('inventario')">Inventario</button>
+      <button class="tab" data-p="prestamos" onclick="verTab('prestamos')">Préstamos</button>
+    </div>
+
+    <!-- PANEL INVENTARIO -->
+    <div class="panel activo" id="p-inventario">
+      <div class="barra">
+        <input type="text" class="buscar" id="buscar" placeholder="Buscar herramienta…" oninput="pintarHerr()">
+        <button class="boton" id="btn-nueva" onclick="abrirNueva()" style="display:none;margin-left:auto">+ Nueva herramienta</button>
+      </div>
+      <div class="tabla-caja">
+        <table>
+          <thead><tr><th>Código</th><th>Nombre</th><th>Estado</th><th>En manos de</th><th>Nota</th><th></th></tr></thead>
+          <tbody id="cuerpo-herr"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL PRESTAMOS -->
+    <div class="panel" id="p-prestamos">
+      <div class="barra">
+        <div style="color:var(--gris);font-size:13px">Préstamos abiertos e historial. También puedes registrar uno nuevo desde el botón de la derecha o desde "Prestar" en el Inventario.</div>
+        <button class="boton" id="btn-prestar" onclick="abrirPrestarLibre()" style="display:none;margin-left:auto">+ Registrar préstamo</button>
+      </div>
+      <h2 style="font-size:16px;color:var(--verde-hondo);margin:6px 0 10px">Préstamos abiertos</h2>
+      <div class="tabla-caja" style="margin-bottom:22px">
+        <table>
+          <thead><tr><th>Herramienta</th><th>Trabajador</th><th>Prestada el</th><th>Días</th><th>Nota</th><th></th></tr></thead>
+          <tbody id="cuerpo-prestamos"></tbody>
+        </table>
+      </div>
+      <h2 style="font-size:16px;color:var(--verde-hondo);margin:6px 0 10px">Historial</h2>
+      <div class="tabla-caja">
+        <table>
+          <thead><tr><th>Herramienta</th><th>Trabajador</th><th>Prestada el</th><th>Devuelta el</th><th>Días</th><th>Resultado</th></tr></thead>
+          <tbody id="cuerpo-historial"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal nueva/editar herramienta -->
+  <div class="modal-fondo" id="modal-herr">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-cab"><h2 id="mh-titulo">Nueva herramienta</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-herr" class="aviso"></div>
+        <div class="campo"><label>Código único (ej. HZ-001)</label><input type="text" id="h-codigo"></div>
+        <div class="campo"><label>Nombre</label><input type="text" id="h-nombre"></div>
+        <div class="campo"><label>Nota (opcional)</label><input type="text" id="h-nota"></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarHerr()">Cancelar</button>
+        <button class="boton" onclick="guardarHerr()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal prestar -->
+  <div class="modal-fondo" id="modal-prestar">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-cab"><h2>Prestar herramienta</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-prestar" class="aviso"></div>
+        <div class="campo" id="p-herr-cont" style="display:none">
+          <label>Herramienta (activa y libre)</label>
+          <select id="p-herr" onchange="alElegirHerrPrest()"></select>
+        </div>
+        <div class="campo"><label>Herramienta</label><input type="text" id="p-info" disabled></div>
+        <div class="campo"><label>Trabajador</label><select id="p-trabajador"></select></div>
+        <div class="grid2">
+          <div class="campo"><label>Fecha</label><input type="date" id="p-fecha"></div>
+        </div>
+        <div class="campo"><label>Nota (opcional)</label><input type="text" id="p-nota"></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarPrestar()">Cancelar</button>
+        <button class="boton" onclick="guardarPrestar()">Prestar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal devolver -->
+  <div class="modal-fondo" id="modal-devolver">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-cab"><h2>Registrar devolución</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-devolver" class="aviso"></div>
+        <div class="campo"><label>Préstamo</label><input type="text" id="dv-info" disabled></div>
+        <div class="campo"><label>Fecha de devolución</label><input type="date" id="dv-fecha"></div>
+        <div class="campo" style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="dv-danada" style="width:auto">
+          <label for="dv-danada" style="margin:0">Volvió dañada (queda marcada para reparación)</label>
+        </div>
+        <div class="campo"><label>Nota (opcional)</label><input type="text" id="dv-nota"></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarDevolver()">Cancelar</button>
+        <button class="boton" onclick="guardarDevolver()">Registrar devolución</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let puedeEditar=false, herramientas=[], prestamos=[], trabajadoresH=[], editHerrId=null, prestarHerrId=null, devolverPrestamoId=null;
+
+async function init(){
+  const rme=await fetch("/api/me");
+  if(!rme.ok){ window.location.href="/"; return; }
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  if(me.rol==="administrador"){ const nga=document.getElementById("nav-grupo-admin"); if(nga) nga.style.display="flex";  }
+  puedeEditar=(me.rol==="administrador"||me.rol==="almacen");
+  if(puedeEditar) document.getElementById("btn-nueva").style.display="inline-block";
+  if(puedeEditar) document.getElementById("btn-prestar").style.display="inline-block";
+  else document.getElementById("nota-permiso").style.display="block";
+  try{ const rt=await fetch("/api/trabajadores"); if(rt.ok){ const d=await rt.json(); trabajadoresH=(d.trabajadores||[]).filter(t=>t.activo); } }catch(e){}
+  await cargarHerramientas();
+  await cargarPrestamos();
+}
+
+function verTab(p){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("activa",t.dataset.p===p));
+  document.querySelectorAll(".panel").forEach(pl=>pl.classList.remove("activo"));
+  document.getElementById("p-"+p).classList.add("activo");
+  if(p==="prestamos") pintarPrestamos();
+}
+
+async function cargarHerramientas(){
+  const r=await fetch("/api/herramientas"); if(!r.ok) return;
+  const d=await r.json(); herramientas=d.herramientas||[];
+  pintarHerr();
+}
+function badgeEstado(e){
+  if(e==='activa') return '<span style="color:var(--verde);font-weight:700;font-size:11px">ACTIVA</span>';
+  if(e==='danada') return '<span style="color:var(--ambar);font-weight:700;font-size:11px">DAÑADA</span>';
+  return '<span style="color:var(--gris);font-weight:700;font-size:11px">RETIRADA</span>';
+}
+function pintarHerr(){
+  const q=(document.getElementById("buscar").value||"").toLowerCase();
+  const tb=document.getElementById("cuerpo-herr"); tb.innerHTML="";
+  const filas=herramientas.filter(h=>!q||(h.codigo+" "+h.nombre).toLowerCase().includes(q));
+  if(filas.length===0){ tb.innerHTML='<tr><td colspan="6" style="color:var(--gris);text-align:center;padding:20px">Sin herramientas registradas.</td></tr>'; return; }
+  filas.forEach(h=>{
+    let acc="";
+    if(puedeEditar){
+      if(h.estado==='activa'&&!h.prestamo_id) acc+=`<button class="accion" onclick="abrirPrestar(${h.id})">Prestar</button>`;
+      if(h.prestamo_id) acc+=`<button class="accion" onclick="abrirDevolver(${h.prestamo_id})">Devolver</button>`;
+      acc+=`<button class="accion" onclick="abrirEditar(${h.id})">Editar</button>`;
+      if(h.estado==='activa') acc+=`<button class="accion" onclick="cambiarEstado(${h.id},'danada')">Marcar dañada</button>`;
+      if(h.estado==='danada') acc+=`<button class="accion" onclick="cambiarEstado(${h.id},'activa')">Reparada</button>`;
+      if(h.estado!=='retirada') acc+=`<button class="accion" onclick="cambiarEstado(${h.id},'retirada')">Retirar</button>`;
+    }
+    tb.insertAdjacentHTML("beforeend",`<tr>
+      <td><b>${escapar(h.codigo)}</b></td>
+      <td>${escapar(h.nombre)}</td>
+      <td>${badgeEstado(h.estado)}</td>
+      <td>${h.prestatario?escapar(h.prestatario)+' <small class="dato">desde '+h.fecha_prestamo+'</small>':'<small class="dato">—</small>'}</td>
+      <td>${escapar(h.nota||"—")}</td>
+      <td>${acc}</td>
+    </tr>`);
+  });
+}
+async function cambiarEstado(id,estado){
+  const msg=estado==='danada'?'¿Marcar esta herramienta como dañada? No se podrá prestar hasta repararla.':(estado==='retirada'?'¿Retirar esta herramienta de circulación?':'¿Marcar esta herramienta como reparada y activa?');
+  if(!confirm(msg)) return;
+  const r=await fetch("/api/herramientas/estado",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:id,estado:estado})});
+  if(!r.ok){ const d=await r.json(); alert(d.error||"No se pudo cambiar el estado."); return; }
+  cargarHerramientas();
+}
+
+function abrirNueva(){
+  editHerrId=null;
+  document.getElementById("mh-titulo").textContent="Nueva herramienta";
+  document.getElementById("h-codigo").value=""; document.getElementById("h-codigo").disabled=false;
+  document.getElementById("h-nombre").value=""; document.getElementById("h-nota").value="";
+  const av=document.getElementById("aviso-herr"); av.className="aviso"; av.textContent="";
+  document.getElementById("modal-herr").classList.add("abierto");
+}
+function abrirEditar(id){
+  const h=herramientas.find(x=>x.id===id); if(!h) return;
+  editHerrId=id;
+  document.getElementById("mh-titulo").textContent="Editar herramienta";
+  document.getElementById("h-codigo").value=h.codigo;
+  document.getElementById("h-nombre").value=h.nombre;
+  document.getElementById("h-nota").value=h.nota||"";
+  const av=document.getElementById("aviso-herr"); av.className="aviso"; av.textContent="";
+  document.getElementById("modal-herr").classList.add("abierto");
+}
+function cerrarHerr(){ document.getElementById("modal-herr").classList.remove("abierto"); }
+async function guardarHerr(){
+  const codigo=document.getElementById("h-codigo").value.trim();
+  const nombre=document.getElementById("h-nombre").value.trim();
+  const nota=document.getElementById("h-nota").value.trim();
+  const av=document.getElementById("aviso-herr");
+  if(!codigo||!nombre){ av.className="aviso error"; av.textContent="Código y nombre son obligatorios."; return; }
+  const r=await fetch("/api/herramientas",{method:editHerrId?"PUT":"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(editHerrId?{id:editHerrId,codigo:codigo,nombre:nombre,nota:nota||null}:{codigo:codigo,nombre:nombre,nota:nota||null})});
+  const d=await r.json();
+  if(!r.ok){ av.className="aviso error"; av.textContent=d.error||"No se pudo guardar."; return; }
+  cerrarHerr(); cargarHerramientas();
+}
+
+function abrirPrestar(id){
+  const h=herramientas.find(x=>x.id===id); if(!h) return;
+  document.getElementById("p-herr-cont").style.display="none";
+  prestarHerrId=id;
+  document.getElementById("p-info").value=h.codigo+" · "+h.nombre;
+  document.getElementById("p-trabajador").innerHTML='<option value="">— elige trabajador —</option>'+trabajadoresH.map(t=>`<option value="${t.id}">${escapar(t.nombre)}</option>`).join("");
+  document.getElementById("p-fecha").value=new Date().toISOString().slice(0,10);
+  document.getElementById("p-nota").value="";
+  const av=document.getElementById("aviso-prestar"); av.className="aviso"; av.textContent="";
+  document.getElementById("modal-prestar").classList.add("abierto");
+}
+function abrirPrestarLibre(){
+  const libres=herramientas.filter(x=>x.estado==='activa'&&!x.prestamo_id);
+  if(libres.length===0){ alert("No hay herramientas activas y libres para prestar."); return; }
+  const sel=document.getElementById("p-herr");
+  sel.innerHTML='<option value="">— elige herramienta —</option>'+libres.map(x=>`<option value="${x.id}">${escapar(x.codigo+" · "+x.nombre)}</option>`).join("");
+  document.getElementById("p-herr-cont").style.display="block";
+  document.getElementById("p-info").value="";
+  document.getElementById("p-trabajador").innerHTML='<option value="">— elige trabajador —</option>'+trabajadoresH.map(t=>`<option value="${t.id}">${escapar(t.nombre)}</option>`).join("");
+  document.getElementById("p-fecha").value=new Date().toISOString().slice(0,10);
+  document.getElementById("p-nota").value="";
+  const av=document.getElementById("aviso-prestar"); av.className="aviso"; av.textContent="";
+  prestarHerrId=null;
+  document.getElementById("modal-prestar").classList.add("abierto");
+}
+function alElegirHerrPrest(){
+  const id=parseInt(document.getElementById("p-herr").value,10);
+  const hh=herramientas.find(x=>x.id===id);
+  document.getElementById("p-info").value=hh?(hh.codigo+" · "+hh.nombre):"";
+  prestarHerrId=hh?id:null;
+}
+function cerrarPrestar(){ document.getElementById("modal-prestar").classList.remove("abierto"); prestarHerrId=null; }
+async function guardarPrestar(){
+  const trabajador_id=document.getElementById("p-trabajador").value;
+  const av=document.getElementById("aviso-prestar");
+  if(!prestarHerrId){ av.className="aviso error"; av.textContent="Elige la herramienta."; return; }
+  if(!trabajador_id){ av.className="aviso error"; av.textContent="Elige el trabajador."; return; }
+  const r=await fetch("/api/herramientas/prestar",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({herramienta_id:prestarHerrId,trabajador_id:trabajador_id,fecha:document.getElementById("p-fecha").value,nota:document.getElementById("p-nota").value||null})});
+  const d=await r.json();
+  if(!r.ok){ av.className="aviso error"; av.textContent=d.error||"No se pudo prestar."; return; }
+  cerrarPrestar(); cargarHerramientas(); cargarPrestamos();
+}
+
+function abrirDevolver(prestamoId){
+  const p=prestamos.find(x=>x.id===prestamoId); if(!p) return;
+  devolverPrestamoId=prestamoId;
+  document.getElementById("dv-info").value=p.codigo+" · "+p.herramienta+" → "+p.trabajador;
+  document.getElementById("dv-fecha").value=new Date().toISOString().slice(0,10);
+  document.getElementById("dv-danada").checked=false;
+  document.getElementById("dv-nota").value=p.nota||"";
+  const av=document.getElementById("aviso-devolver"); av.className="aviso"; av.textContent="";
+  document.getElementById("modal-devolver").classList.add("abierto");
+}
+function cerrarDevolver(){ document.getElementById("modal-devolver").classList.remove("abierto"); devolverPrestamoId=null; }
+async function guardarDevolver(){
+  const r=await fetch("/api/herramientas/devolver",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({prestamo_id:devolverPrestamoId,fecha:document.getElementById("dv-fecha").value,
+      volvio_danada:document.getElementById("dv-danada").checked,nota:document.getElementById("dv-nota").value||null})});
+  const d=await r.json();
+  if(!r.ok){ const av=document.getElementById("aviso-devolver"); av.className="aviso error"; av.textContent=d.error||"No se pudo registrar."; return; }
+  cerrarDevolver(); cargarHerramientas(); cargarPrestamos();
+}
+
+async function cargarPrestamos(){
+  const r=await fetch("/api/prestamos"); if(!r.ok) return;
+  const d=await r.json(); prestamos=d.prestamos||[];
+  pintarPrestamos();
+}
+function diasEntre(a,b){ const d1=new Date(a+"T00:00:00"), d2=new Date(b+"T00:00:00"); return Math.max(0,Math.round((d2-d1)/86400000)); }
+function pintarPrestamos(){
+  const hoy=new Date().toISOString().slice(0,10);
+  const abiertos=prestamos.filter(p=>!p.fecha_devolucion);
+  const cerrados=prestamos.filter(p=>p.fecha_devolucion).slice(0,100);
+  const tb=document.getElementById("cuerpo-prestamos"); tb.innerHTML="";
+  if(abiertos.length===0){ tb.innerHTML='<tr><td colspan="6" style="color:var(--gris);text-align:center;padding:20px">Ninguna herramienta prestada ahora mismo.</td></tr>'; }
+  abiertos.forEach(p=>{
+    tb.insertAdjacentHTML("beforeend",`<tr>
+      <td><b>${escapar(p.codigo)}</b> ${escapar(p.herramienta)}</td>
+      <td>${escapar(p.trabajador)}</td>
+      <td>${p.fecha_prestamo}</td>
+      <td class="num">${diasEntre(p.fecha_prestamo,hoy)}</td>
+      <td>${escapar(p.nota||"—")}</td>
+      <td>${puedeEditar?`<button class="accion" onclick="abrirDevolver(${p.id})">Devolver</button>`:""}</td>
+    </tr>`);
+  });
+  const th=document.getElementById("cuerpo-historial"); th.innerHTML="";
+  if(cerrados.length===0){ th.innerHTML='<tr><td colspan="6" style="color:var(--gris);text-align:center;padding:20px">Sin historial todavía.</td></tr>'; return; }
+  cerrados.forEach(p=>{
+    const res=p.volvio_danada?'<span style="color:var(--ambar);font-size:11px;font-weight:700">VOLVIÓ DAÑADA</span>':'<span style="color:var(--verde);font-size:11px;font-weight:700">OK</span>';
+    th.insertAdjacentHTML("beforeend",`<tr>
+      <td><b>${escapar(p.codigo)}</b> ${escapar(p.herramienta)}</td>
+      <td>${escapar(p.trabajador)}</td>
+      <td>${p.fecha_prestamo}</td>
+      <td>${p.fecha_devolucion}</td>
+      <td class="num">${diasEntre(p.fecha_prestamo,p.fecha_devolucion)}</td>
+      <td>${res}</td>
+    </tr>`);
+  });
+}
+
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+init();
+</script>
+<script>
+(function(){
+  function cerrarTodos(excepto){document.querySelectorAll('.grupo.abierto').forEach(g=>{if(g!==excepto)g.classList.remove('abierto')});}
+  document.addEventListener('click',function(e){
+    const t=e.target.closest('.grupo-titulo');
+    if(t){const g=t.parentElement;const ab=g.classList.contains('abierto');cerrarTodos(g);g.classList.toggle('abierto',!ab);}
+    else cerrarTodos(null);
+  });
+})();
+</script>
+</body>
+</html>
