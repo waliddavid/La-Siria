@@ -2815,6 +2815,253 @@ async function handleApi(req, env, path) {
   }
 
   // ==========================================================
+  // EMPACADORA / CORTE (8G-1): Informe General F.A.16 + Inspeccion F.A.14
+  // ==========================================================
+  const CINTA_NOMBRES = {1:"BLANCO",2:"AMARILLO",3:"MORADO",4:"ROJO",5:"CAFÉ",6:"NEGRO",7:"VERDE",8:"AZUL"};
+
+  // calendario de cintas: dada una fecha, devuelve semana y color de cosecha por edad (8-13 sem)
+  if (path === "/api/cintas" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const sp4 = new URL(req.url).searchParams;
+    const fecha = sp4.get("fecha");
+    if (!fecha) return json({ error: "Falta la fecha." }, 400);
+    const row = await env.DB.prepare(
+      "SELECT * FROM cintas_calendario WHERE lunes <= ? ORDER BY lunes DESC LIMIT 1"
+    ).bind(fecha).first();
+    if (!row) return json({ error: "Fecha fuera del calendario de cintas (2025-2029)." }, 404);
+    const cosecha = {};
+    for (let e = 8; e <= 13; e++) {
+      const d = new Date(row.lunes + "T00:00:00");
+      d.setDate(d.getDate() - e * 7);
+      const f = d.toISOString().slice(0, 10);
+      const r2 = await env.DB.prepare(
+        "SELECT cinta_embolse FROM cintas_calendario WHERE lunes <= ? ORDER BY lunes DESC LIMIT 1"
+      ).bind(f).first();
+      const c = r2 ? r2.cinta_embolse : null;
+      cosecha[e] = { cinta: c, color: c ? (CINTA_NOMBRES[c] || c) : null };
+    }
+    return json({ anio: row.anio, semana: row.semana, cinta_embolse: row.cinta_embolse,
+                  cinta_embolse_nombre: CINTA_NOMBRES[row.cinta_embolse] || null, cosecha });
+  }
+
+  // guardar informe general F.A.16 completo (con sus tablas hijas)
+  if (path === "/api/cortes" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!["administrador", "coordinador"].includes(user.rol))
+      return json({ error: "Solo administración o coordinadores pueden registrar cortes." }, 403);
+    const b = await req.json();
+    if (!b.codigo || !b.fecha) return json({ error: "Código de corte y fecha son obligatorios." }, 400);
+    const dupe = await env.DB.prepare("SELECT id FROM cortes WHERE codigo=?").bind(String(b.codigo).trim()).first();
+    if (dupe) return json({ error: `Ya existe un corte con código ${b.codigo}.` }, 400);
+    // semana ISO de la fecha
+    const d0 = new Date(b.fecha + "T00:00:00");
+    const day = (d0.getDay() + 6) % 7;
+    d0.setDate(d0.getDate() - day + 3);
+    const semana = 1 + Math.round((d0 - new Date(d0.getFullYear(), 0, 4)) / 604800000);
+    // totales desde viajes si vienen
+    let tc = null, tr = null, tp = null;
+    if (Array.isArray(b.viajes) && b.viajes.length) {
+      tc = 0; tr = 0;
+      for (const v of b.viajes) { tc += parseInt(v.cortados) || 0; tr += parseInt(v.recusados) || 0; }
+      tp = tc - tr;
+    }
+    const res = await env.DB.prepare(
+      `INSERT INTO cortes (codigo, fecha, semana, finca, cod_finca, destino, pdo, inspector,
+        area_recorrida, pct_recusados, ratio_cortado, ratio_procesado,
+        peso_prom, calibracion_prom, manos_prom, largo_2da_mano, largo_ult_mano,
+        merma_cortada, merma_procesada, dedos_caja,
+        prod_dole18, prod_13kg, prod_single, prod_otras,
+        cajas_recusadas, cajas_embarcadas, cajas_plantas,
+        hombres_campo, hombres_planta, hombres_empacando,
+        material_usado, horas_perdidas, observaciones,
+        manifiesto_no, contenedor, sello_entrada, sello_salida, placa, tot_cortados, tot_recusados, tot_procesados)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    ).bind(String(b.codigo).trim(), b.fecha, semana, b.finca || null, b.cod_finca || null, b.destino || null,
+           b.pdo || null, b.inspector || null,
+           b.area_recorrida ?? null, b.pct_recusados ?? null, b.ratio_cortado ?? null, b.ratio_procesado ?? null,
+           b.peso_prom ?? null, b.calibracion_prom ?? null, b.manos_prom ?? null,
+           b.largo_2da_mano ?? null, b.largo_ult_mano ?? null,
+           b.merma_cortada ?? null, b.merma_procesada ?? null, b.dedos_caja ?? null,
+           b.prod_dole18 ?? null, b.prod_13kg ?? null, b.prod_single ?? null, b.prod_otras ?? null,
+           b.cajas_recusadas ?? null, b.cajas_embarcadas ?? null, b.cajas_plantas ?? null,
+           b.hombres_campo ?? null, b.hombres_planta ?? null, b.hombres_empacando ?? null,
+           b.material_usado || null, b.horas_perdidas || null, b.observaciones || null,
+           (b.manifiesto && b.manifiesto.no) || null, (b.manifiesto && b.manifiesto.contenedor) || null,
+           (b.manifiesto && b.manifiesto.sello_entrada) || null, (b.manifiesto && b.manifiesto.sello_salida) || null,
+           (b.manifiesto && b.manifiesto.placa) || null,
+           tc, tr, tp).run();
+    const cid = res.meta.last_row_id;
+    if (Array.isArray(b.racimos_edad)) for (const r of b.racimos_edad) {
+      if (!r.edad_semanas) continue;
+      await env.DB.prepare("INSERT INTO corte_racimos_edad (corte_id, edad_semanas, color, calibre, racimos) VALUES (?,?,?,?,?)")
+        .bind(cid, r.edad_semanas, r.color || null, r.calibre ?? null, r.racimos ?? null).run();
+    }
+    if (Array.isArray(b.cajas_rel)) for (const r of b.cajas_rel) {
+      if (!r.cajas && !r.contenedor) continue;
+      await env.DB.prepare("INSERT INTO corte_cajas_rel (corte_id, finca, p_camion, contenedor, sello, cajas) VALUES (?,?,?,?,?,?)")
+        .bind(cid, r.finca || null, r.p_camion || null, r.contenedor || null, r.sello || null, r.cajas ?? null).run();
+    }
+    if (Array.isArray(b.viajes)) for (const v of b.viajes) {
+      if (!v.lote_id) continue;
+      const cor = parseInt(v.cortados) || 0, rec = parseInt(v.recusados) || 0;
+      await env.DB.prepare("INSERT INTO inspeccion_viajes (corte_id, viaje, lote_id, cortados, recusados, procesados) VALUES (?,?,?,?,?,?)")
+        .bind(cid, v.viaje || null, v.lote_id, cor, rec, cor - rec).run();
+    }
+    if (Array.isArray(b.muestreo)) for (const m of b.muestreo) {
+      if (!m.lote_id) continue;
+      await env.DB.prepare("INSERT INTO inspeccion_muestreo (corte_id, lote_id, edad, peso, calibre, largo_2da, largo_ultima, n_manos, calidad, defecto) VALUES (?,?,?,?,?,?,?,?,?,?)")
+        .bind(cid, m.lote_id, m.edad ?? null, m.peso ?? null, m.calibre ?? null, m.largo_2da ?? null,
+              m.largo_ultima ?? null, m.n_manos ?? null, m.calidad ?? null, m.defecto || null).run();
+    }
+        if (Array.isArray(b.rechazados)) for (const r of b.rechazados) {
+      if (!r.lote_id) continue;
+      await env.DB.prepare("INSERT INTO corte_rechazados (corte_id, lote_id, edad, mano, calibre, defecto) VALUES (?,?,?,?,?,?)")
+        .bind(cid, r.lote_id, r.edad ?? null, r.mano ?? null, r.calibre ?? null, r.defecto || null).run();
+    }
+    if (b.manifiesto && Array.isArray(b.manifiesto.pallets)) for (const p of b.manifiesto.pallets) {
+      if (!p.cajas && !p.dsn) continue;
+      await env.DB.prepare("INSERT INTO corte_manifiesto (corte_id, pallet, dsn, producto, cajas) VALUES (?,?,?,?,?)")
+        .bind(cid, p.pallet || null, p.dsn || null, p.producto || null, p.cajas ?? null).run();
+    }
+    await audit(env, user.id, "crear", "cortes", cid, null, { codigo: b.codigo });
+    return json({ ok: true, id: cid, semana });
+  }
+
+  // actualizar un corte existente (reemplaza tambien sus tablas hijas)
+  if (path.match(/^\/api\/cortes\/\d+$/) && req.method === "PUT") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!["administrador", "coordinador"].includes(user.rol))
+      return json({ error: "Solo administración o coordinadores pueden editar cortes." }, 403);
+    const cid = parseInt(path.split("/")[3]);
+    const c0 = await env.DB.prepare("SELECT id FROM cortes WHERE id=?").bind(cid).first();
+    if (!c0) return json({ error: "El corte no existe." }, 404);
+    const b = await req.json();
+    if (!b.codigo || !b.fecha) return json({ error: "Código de corte y fecha son obligatorios." }, 400);
+    const d0 = new Date(b.fecha + "T00:00:00");
+    const day0 = (d0.getDay() + 6) % 7;
+    d0.setDate(d0.getDate() - day0 + 3);
+    const semana = 1 + Math.round((d0 - new Date(d0.getFullYear(), 0, 4)) / 604800000);
+    let tc = null, tr = null, tp = null;
+    if (Array.isArray(b.viajes) && b.viajes.length) {
+      tc = 0; tr = 0;
+      for (const v of b.viajes) { tc += parseInt(v.cortados) || 0; tr += parseInt(v.recusados) || 0; }
+      tp = tc - tr;
+    }
+    await env.DB.prepare(
+      `UPDATE cortes SET codigo=?, fecha=?, semana=?, finca=?, cod_finca=?, destino=?, pdo=?, inspector=?,
+        area_recorrida=?, pct_recusados=?, ratio_cortado=?, ratio_procesado=?,
+        peso_prom=?, calibracion_prom=?, manos_prom=?, largo_2da_mano=?, largo_ult_mano=?,
+        merma_cortada=?, merma_procesada=?, dedos_caja=?,
+        prod_dole18=?, prod_13kg=?, prod_single=?, prod_otras=?,
+        cajas_recusadas=?, cajas_embarcadas=?, cajas_plantas=?,
+        hombres_campo=?, hombres_planta=?, hombres_empacando=?,
+        material_usado=?, horas_perdidas=?, observaciones=?, manifiesto_no=?, contenedor=?, sello_entrada=?, sello_salida=?, placa=?, tot_cortados=?, tot_recusados=?, tot_procesados=?
+       WHERE id=?`
+    ).bind(String(b.codigo).trim(), b.fecha, semana, b.finca || null, b.cod_finca || null, b.destino || null,
+          b.pdo || null, b.inspector || null,
+          b.area_recorrida ?? null, b.pct_recusados ?? null, b.ratio_cortado ?? null, b.ratio_procesado ?? null,
+          b.peso_prom ?? null, b.calibracion_prom ?? null, b.manos_prom ?? null,
+          b.largo_2da_mano ?? null, b.largo_ult_mano ?? null,
+          b.merma_cortada ?? null, b.merma_procesada ?? null, b.dedos_caja ?? null,
+          b.prod_dole18 ?? null, b.prod_13kg ?? null, b.prod_single ?? null, b.prod_otras ?? null,
+          b.cajas_recusadas ?? null, b.cajas_embarcadas ?? null, b.cajas_plantas ?? null,
+          b.hombres_campo ?? null, b.hombres_planta ?? null, b.hombres_empacando ?? null,
+          b.material_usado || null, b.horas_perdidas || null, b.observaciones || null,
+          (b.manifiesto && b.manifiesto.no) || null, (b.manifiesto && b.manifiesto.contenedor) || null,
+          (b.manifiesto && b.manifiesto.sello_entrada) || null, (b.manifiesto && b.manifiesto.sello_salida) || null,
+          (b.manifiesto && b.manifiesto.placa) || null,
+          tc, tr, tp, cid).run();
+    for (const t of ["corte_racimos_edad", "corte_cajas_rel", "inspeccion_viajes", "inspeccion_muestreo", "corte_rechazados", "corte_manifiesto"])
+      await env.DB.prepare(`DELETE FROM ${t} WHERE corte_id=?`).bind(cid).run();
+    if (Array.isArray(b.racimos_edad)) for (const r of b.racimos_edad) {
+      if (!r.edad_semanas) continue;
+      await env.DB.prepare("INSERT INTO corte_racimos_edad (corte_id, edad_semanas, color, calibre, racimos) VALUES (?,?,?,?,?)")
+        .bind(cid, r.edad_semanas, r.color || null, r.calibre ?? null, r.racimos ?? null).run();
+    }
+    if (Array.isArray(b.cajas_rel)) for (const r of b.cajas_rel) {
+      if (!r.cajas && !r.contenedor) continue;
+      await env.DB.prepare("INSERT INTO corte_cajas_rel (corte_id, finca, p_camion, contenedor, sello, cajas) VALUES (?,?,?,?,?,?)")
+        .bind(cid, r.finca || null, r.p_camion || null, r.contenedor || null, r.sello || null, r.cajas ?? null).run();
+    }
+    if (Array.isArray(b.viajes)) for (const v of b.viajes) {
+      if (!v.lote_id) continue;
+      const cor = parseInt(v.cortados) || 0, rec = parseInt(v.recusados) || 0;
+      await env.DB.prepare("INSERT INTO inspeccion_viajes (corte_id, viaje, lote_id, cortados, recusados, procesados) VALUES (?,?,?,?,?,?)")
+        .bind(cid, v.viaje || null, v.lote_id, cor, rec, cor - rec).run();
+    }
+    if (Array.isArray(b.muestreo)) for (const m of b.muestreo) {
+      if (!m.lote_id) continue;
+      await env.DB.prepare("INSERT INTO inspeccion_muestreo (corte_id, lote_id, edad, peso, calibre, largo_2da, largo_ultima, n_manos, calidad, defecto) VALUES (?,?,?,?,?,?,?,?,?,?)")
+        .bind(cid, m.lote_id, m.edad ?? null, m.peso ?? null, m.calibre ?? null, m.largo_2da ?? null,
+              m.largo_ultima ?? null, m.n_manos ?? null, m.calidad ?? null, m.defecto || null).run();
+    }
+        if (Array.isArray(b.rechazados)) for (const r of b.rechazados) {
+      if (!r.lote_id) continue;
+      await env.DB.prepare("INSERT INTO corte_rechazados (corte_id, lote_id, edad, mano, calibre, defecto) VALUES (?,?,?,?,?,?)")
+        .bind(cid, r.lote_id, r.edad ?? null, r.mano ?? null, r.calibre ?? null, r.defecto || null).run();
+    }
+    if (b.manifiesto && Array.isArray(b.manifiesto.pallets)) for (const p of b.manifiesto.pallets) {
+      if (!p.cajas && !p.dsn) continue;
+      await env.DB.prepare("INSERT INTO corte_manifiesto (corte_id, pallet, dsn, producto, cajas) VALUES (?,?,?,?,?)")
+        .bind(cid, p.pallet || null, p.dsn || null, p.producto || null, p.cajas ?? null).run();
+    }
+    await audit(env, user.id, "editar", "cortes", cid, null, { codigo: b.codigo });
+    return json({ ok: true, id: cid, semana });
+  }
+
+  // borrar un corte (SOLO administrador; borra tambien sus tablas hijas)
+  if (path.match(/^\/api\/cortes\/\d+$/) && req.method === "DELETE") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (user.rol !== "administrador") return json({ error: "Solo el administrador puede borrar cortes." }, 403);
+    const cid = parseInt(path.split("/")[3]);
+    const c0 = await env.DB.prepare("SELECT id, codigo FROM cortes WHERE id=?").bind(cid).first();
+    if (!c0) return json({ error: "El corte no existe." }, 404);
+    for (const t of ["corte_racimos_edad", "corte_cajas_rel", "inspeccion_viajes", "inspeccion_muestreo", "corte_rechazados", "corte_manifiesto"])
+      await env.DB.prepare(`DELETE FROM ${t} WHERE corte_id=?`).bind(cid).run();
+    await env.DB.prepare("DELETE FROM cortes WHERE id=?").bind(cid).run();
+    await audit(env, user.id, "borrar", "cortes", cid, { codigo: c0.codigo }, null);
+    return json({ ok: true });
+  }
+
+  // listado de cortes recientes
+  if (path === "/api/cortes" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const { results } = await env.DB.prepare(
+      `SELECT c.id, c.codigo, c.fecha, c.semana, c.finca, c.destino, c.inspector,
+              c.tot_cortados, c.tot_recusados, c.tot_procesados, c.cajas_embarcadas, c.cerrado
+       FROM cortes c ORDER BY c.fecha DESC, c.id DESC LIMIT 100`
+    ).all();
+    return json({ cortes: results });
+  }
+
+  // detalle completo de un corte (para ver/editar)
+  if (path.startsWith("/api/cortes/") && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const cid = parseInt(path.split("/")[3]);
+    const c = await env.DB.prepare("SELECT * FROM cortes WHERE id=?").bind(cid).first();
+    if (!c) return json({ error: "El corte no existe." }, 404);
+    const re_ = await env.DB.prepare("SELECT * FROM corte_racimos_edad WHERE corte_id=? ORDER BY edad_semanas").bind(cid).all();
+    const cr = await env.DB.prepare("SELECT * FROM corte_cajas_rel WHERE corte_id=?").bind(cid).all();
+    const vi = await env.DB.prepare(
+      `SELECT i.*, l.nombre AS lote FROM inspeccion_viajes i LEFT JOIN lotes l ON l.id=i.lote_id WHERE i.corte_id=? ORDER BY i.viaje`
+    ).bind(cid).all();
+    const mu = await env.DB.prepare(
+      `SELECT m.*, l.nombre AS lote FROM inspeccion_muestreo m LEFT JOIN lotes l ON l.id=m.lote_id WHERE m.corte_id=? ORDER BY m.id`
+    ).bind(cid).all();
+    const rj = await env.DB.prepare(
+      `SELECT r.*, l.nombre AS lote FROM corte_rechazados r LEFT JOIN lotes l ON l.id=r.lote_id WHERE r.corte_id=? ORDER BY r.id`
+    ).bind(cid).all();
+    const mf = await env.DB.prepare("SELECT * FROM corte_manifiesto WHERE corte_id=? ORDER BY pallet").bind(cid).all();
+    return json({ corte: c, racimos_edad: re_.results, cajas_rel: cr.results, viajes: vi.results, muestreo: mu.results, rechazados: rj.results, manifiesto: mf.results });
+  }
+
+  // ==========================================================
   // CENTRO DE PENDIENTES (notificaciones)
   // ==========================================================
   // contadores para la campanita (por resolver = rojo, por leer = azul)
