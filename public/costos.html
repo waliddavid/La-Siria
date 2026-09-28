@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Costos — La Siria</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
+    --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;--ambar:#8a6d1b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo);color:var(--tinta);line-height:1.5;min-height:100vh}
+  header{background:var(--verde-hondo);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .marca{display:flex;align-items:center;gap:10px}
+  .marca .hoja{width:22px;height:22px;color:#a9c9b2}
+  .marca span{font-weight:600;font-size:15px}
+  nav{display:flex;gap:6px;flex-wrap:wrap}
+  nav a{color:#cddbd0;text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:7px}
+  nav a:hover{background:rgba(255,255,255,.1)}
+  nav a.activo{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  .usuario-actual{font-size:13.5px;color:#cddbd0;display:flex;align-items:center;gap:14px}
+  .salir{color:#fff;background:rgba(255,255,255,.12);border:none;padding:7px 13px;border-radius:7px;font-size:13px;cursor:pointer}
+  .contenedor{max-width:1100px;margin:0 auto;padding:28px 24px}
+  h1{font-size:24px;font-weight:650;color:var(--verde-hondo)}
+  .sub{color:var(--gris);font-size:14px;margin-bottom:18px}
+  .tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--linea)}
+  .tab{padding:10px 18px;border:none;background:none;font-size:14px;font-weight:600;color:var(--gris);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+  .tab.activa{color:var(--verde-hondo);border-bottom-color:var(--verde)}
+  .panel{display:none}.panel.activo{display:block}
+  .barra{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .barra input,.barra select{padding:9px 12px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  .barra input.buscar{flex:1;min-width:200px}
+  .boton{background:var(--verde);color:#fff;border:none;padding:10px 16px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .boton:hover{background:var(--verde-hondo)}
+  .boton.sec{background:#fff;color:var(--verde);border:1.5px solid var(--verde-claro)}
+  .tabla-caja{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:640px}
+  th{background:#f2f1e8;text-align:left;padding:11px 14px;font-size:11.5px;font-weight:600;color:var(--gris);border-bottom:1px solid var(--linea);white-space:nowrap}
+  td{padding:10px 14px;font-size:13px;border-bottom:1px solid #f4f3ec}
+  tr:last-child td{border-bottom:none}
+  .num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .existencia{font-weight:700}
+  .existencia.cero{color:var(--gris);font-weight:400}
+  .bajo-stock{color:var(--error);font-weight:600;font-size:11px}
+  .accion{background:none;border:1px solid var(--linea);border-radius:7px;padding:6px 10px;font-size:12.5px;cursor:pointer;color:var(--tinta);margin-right:4px}
+  .accion:hover{border-color:var(--verde-claro)}
+  .cargando{padding:40px;text-align:center;color:var(--gris)}
+  small.dato{color:var(--gris);font-size:11px}
+  .alerta-banner{background:#f6e6e4;border:1px solid #e6c9c5;color:var(--error);padding:11px 15px;border-radius:9px;font-size:13.5px;margin-bottom:16px;display:none}
+  .alerta-banner.ver{display:block}
+  /* modales */
+  .modal-fondo{display:none;position:fixed;inset:0;background:rgba(29,59,42,.5);align-items:flex-start;justify-content:center;padding:24px;z-index:10;overflow:auto}
+  .modal-fondo.abierto{display:flex}
+  .modal{background:var(--crema);border-radius:14px;width:100%;max-width:500px;box-shadow:0 24px 60px rgba(0,0,0,.3);margin:auto}
+  .modal-cab{padding:20px 26px 12px;border-bottom:1px solid var(--linea)}
+  .modal-cab h2{font-size:18px;color:var(--verde-hondo);font-weight:650}
+  .modal-cuerpo{padding:18px 26px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .campo{margin-bottom:13px}
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  input,select{width:100%;padding:9px 11px;border:1.5px solid var(--linea);border-radius:8px;font-size:14px;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--verde-claro);box-shadow:0 0 0 3px rgba(74,124,89,.15)}
+  .verif-caja{background:#fbf6e5;border:1px solid #ecdfae;border-radius:9px;padding:12px 14px;margin:12px 0;font-size:13px}
+  .verif-caja .exist{font-size:16px;font-weight:700;color:var(--verde-hondo)}
+  .modal-pie{padding:14px 26px;border-top:1px solid var(--linea);display:flex;gap:10px;justify-content:flex-end}
+  .btn-sec{background:none;border:1px solid var(--linea);color:var(--tinta);padding:9px 15px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .aviso{padding:10px 13px;border-radius:8px;font-size:13.5px;margin-bottom:14px;display:none}
+  .aviso.error{background:#f6e6e4;color:var(--error);border:1px solid #e6c9c5;display:block}
+  .aviso.warn{background:#fbf6e5;color:var(--ambar);border:1px solid #ecdfae;display:block}
+  .nota-permiso{background:#fbf6e5;border:1px solid #ecdfae;color:#7a6414;padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px}
+  .capa-row{font-size:12.5px;padding:5px 0;border-bottom:1px solid #f0efe6;display:flex;justify-content:space-between}
+
+nav.menu{display:flex;gap:2px;align-items:flex-start}
+.grupo{position:relative}
+.grupo-titulo{display:block;padding:7px 11px;font-size:12.5px;font-weight:600;color:#cddbd0;cursor:pointer;border-radius:6px;white-space:nowrap}
+.grupo-titulo:hover,.grupo.abierto .grupo-titulo{background:rgba(255,255,255,.14);color:#fff}
+.submenu{display:none;position:absolute;top:100%;left:0;min-width:205px;background:#fff;border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.25);padding:6px;z-index:60}
+.grupo:hover .submenu,.grupo.abierto .submenu{display:block}
+.submenu a{display:block;padding:8px 12px;border-radius:6px;color:#2c4a33;font-size:13px;white-space:nowrap}
+.submenu a:hover{background:#eef4ee;color:#1d3a24}
+.submenu a.activo{background:var(--verde);color:#fff;font-weight:700}
+</style>
+</head>
+<body>
+  <header>
+    <div class="marca">
+      <svg class="hoja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21c0-6 2-12 9-15-1 7-4 13-9 15z"/><path d="M12 21C7 19 4 13 3 6c7 3 9 9 9 15z"/><path d="M12 21V9"/>
+      </svg>
+      <span>Finca La Siria</span>
+    </div>
+<nav class="menu">
+  <div class="grupo">
+    <span class="grupo-titulo">Operaciones</span>
+    <div class="submenu">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/reporte.html" class="activo">Reporte</a>
+      <a href="/corte.html">Corte</a>
+      <a href="/costos.html">Costos</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Planeación</span>
+    <div class="submenu">
+      <a href="/planificador.html">Planificador</a>
+      <a href="/asignacion.html">Asignación Coordinadores</a>
+      <a href="/labores.html">Labores</a>
+      <a href="/deberser.html">Deber ser</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Recursos Humanos</span>
+    <div class="submenu">
+      <a href="/trabajadores.html">Trabajadores</a>
+      <a href="/jornada.html">Jornada Laboral</a>
+      <a href="/festivos.html">Festivos</a>
+      <a href="/nomina.html">Nómina</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Almacén</span>
+    <div class="submenu">
+      <a href="/almacen.html" class="activo">Materiales</a>
+      <a href="/almacen.html?tipo=repuesto">Repuestos</a>
+      <a href="/herramientas.html">Herramientas</a>
+      <a href="/equipos.html">Equipos</a>
+    </div>
+  </div>
+  <div class="grupo" id="nav-grupo-admin" style="display:none">
+    <span class="grupo-titulo">Configuración</span>
+    <div class="submenu">
+      <a href="/configuracion.html">Configuración</a>
+      <a href="/usuarios.html">Usuarios</a>
+      <a href="/lotes.html">Lotes</a>
+      <a href="/ubicaciones.html">Ubicaciones</a>
+      <a href="/materiales.html">Catálogo de materiales</a>
+    </div>
+  </div>
+</nav>
+    <div class="usuario-actual">
+      <span id="quien"></span>
+      <button class="salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="contenedor">
+    <h1>Costos de la Finca</h1>
+    <p class="sub">Liquidaciones de embarque (ingresos), facturas de compra y gastos del mes. La IA puede leer los PDF y pre-llenar los formatos para revisión y aprobación humana.</p>
+
+    <div id="nota-permiso" class="aviso" style="display:none">Solo administración y coordinadores pueden registrar y aprobar.</div>
+
+    <div class="tabs">
+      <button class="tab activa" data-p="liq" onclick="verTab('liq')">Liquidaciones</button>
+      <button class="tab" data-p="fac" onclick="verTab('fac')">Facturas de compra</button>
+      <button class="tab" data-p="gas" onclick="verTab('gas')">Gastos del mes</button>
+    </div>
+
+    <!-- PANEL COSTO DE LA CAJA (resumen siempre visible arriba) -->
+    <div class="tabla-caja" style="padding:16px 18px;margin-bottom:18px" id="caja-resumen">Cargando costo de la caja…</div>
+
+    <!-- LIQUIDACIONES -->
+    <div class="panel activo" id="p-liq">
+      <div class="barra">
+        <div style="color:var(--gris);font-size:13px">Lo que Tecbaco/Dole nos paga por embarque. Suba el PDF de la liquidación y la IA lo pre-llena.</div>
+        <button class="boton" id="btn-nliq" onclick="abrirLiq()" style="display:none;margin-left:auto">+ Nueva liquidación</button>
+      </div>
+      <div class="tabla-caja"><table>
+        <thead><tr><th>Embarque</th><th>Fecha</th><th>Estado</th><th>Corte / Totales</th><th></th></tr></thead>
+        <tbody id="t-liqs"></tbody>
+      </table></div>
+    </div>
+
+    <!-- FACTURAS -->
+    <div class="panel" id="p-fac">
+      <div class="barra">
+        <div style="color:var(--gris);font-size:13px">Facturas de materiales e insumos. Suba el PDF de la factura y la IA extrae las líneas.</div>
+        <button class="boton" id="btn-nfac" onclick="abrirFac()" style="display:none;margin-left:auto">+ Nueva factura</button>
+      </div>
+      <div class="tabla-caja"><table>
+        <thead><tr><th>Número</th><th>Proveedor</th><th>Fecha</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="t-facs"></tbody>
+      </table></div>
+    </div>
+
+    <!-- GASTOS -->
+    <div class="panel" id="p-gas">
+      <div class="barra">
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="number" id="g-anio" style="width:90px"> / <input type="number" id="g-mes" min="1" max="12" style="width:70px">
+          <button class="btn-sec" onclick="cargarGastos()">Ver</button>
+        </div>
+        <button class="boton" id="btn-gconcepto" onclick="abrirConcepto()" style="display:none;margin-left:auto">+ Concepto</button>
+      </div>
+      <div id="t-gastos"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: nueva/editar liquidacion o factura (generico) -->
+  <div class="modal-fondo" id="modal-doc">
+    <div class="modal" style="max-width:760px">
+      <div class="modal-cab"><h2 id="md-titulo">Nuevo documento</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-doc" class="aviso"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <input type="file" id="md-pdf" accept="application/pdf,image/*" multiple>
+          <button class="btn-sec" id="md-extraer" onclick="extraerPDF()">✨ Extraer con IA</button>
+          <small class="dato" id="md-ext-info"></small>
+        </div>
+        <div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));display:grid;gap:8px">
+          <div class="campo" id="camp-embarque"><label>Embarque / Corte</label><input type="text" id="md-embarque" placeholder="S-39"></div>
+          <div class="campo" id="camp-numero"><label>Número factura</label><input type="text" id="md-numero"></div>
+          <div class="campo"><label>Proveedor</label><input type="text" id="md-proveedor" value="Tecbaco"></div>
+          <div class="campo"><label>Fecha</label><input type="date" id="md-fecha"></div>
+          <div class="campo" id="camp-concepto"><label>Concepto de costo</label><select id="md-concepto"></select></div>
+          <div class="campo"><label>Tasa de cambio (si aplica)</label><input type="number" id="md-tasa" step="0.01"></div>
+        </div>
+        <div class="tabla-caja" style="padding:0;overflow-x:auto;max-height:none;margin-top:10px">
+          <table style="font-size:12.5px"><thead id="md-head"></thead><tbody id="md-lineas"></tbody></table>
+        </div>
+        <button type="button" class="btn-sec" onclick="mdAddLinea()" style="margin-top:6px">+ Línea</button>
+        <div id="camp-totales" style="display:none;margin-top:10px;text-align:right;font-size:13.5px">
+          Subtotal: <b id="md-sub">0</b> · IVA: <input type="number" id="md-iva" style="width:100px" oninput="mdTotales()"> · <b>TOTAL: <span id="md-total">0</span></b>
+        </div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarDoc()">Cancelar</button>
+        <button class="boton" onclick="guardarDoc(false)">Guardar borrador</button>
+        <button class="boton" id="md-aprob" onclick="guardarDoc(true)" style="display:none">Guardar y aprobar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: concepto de costo -->
+  <div class="modal-fondo" id="modal-conc">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-cab"><h2>Nuevo concepto de costo</h2></div>
+      <div class="modal-cuerpo">
+        <div id="aviso-conc" class="aviso"></div>
+        <div class="campo"><label>Código (ej 2.1.9)</label><input type="text" id="c-codigo"></div>
+        <div class="campo"><label>Nombre</label><input type="text" id="c-nombre"></div>
+        <div class="campo"><label>Grupo</label><select id="c-grupo"><option>VARIABLE</option><option>AGRICOLA FIJO</option><option>MANTENIMIENTO</option><option>PERSONAL</option><option>SERVICIOS TERCEROS</option><option>ADMINISTRACION</option></select></div>
+        <div class="campo"><label><input type="checkbox" id="c-var" style="width:auto"> Es variable (escala con cajas)</label></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarConcepto()">Cancelar</button>
+        <button class="boton" onclick="guardarConcepto()">Guardar</button>
+      </div>
+    </div>
+  </div>
+  <!-- Modal vinculacion manual -->
+  <div class="modal-fondo" id="modal-vin">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-cab"><h2>Vincular con corte (manual)</h2></div>
+      <div class="modal-cuerpo">
+        <div id="vm-aviso" class="aviso" style="display:block"></div>
+        <div class="campo"><label>Corte (últimos 45 días)</label><select id="vm-corte"></select></div>
+        <div class="campo"><label>Nota de discrepancia (qué pasó con la diferencia de cajas)</label>
+          <textarea id="vm-nota" rows="3" style="width:100%;border:1px solid #cfd8cf;border-radius:8px;padding:8px;font-family:inherit;font-size:13px" placeholder="Ej: 8 cajas devueltas en puerto; confirmando con Tecbaco (29-sep)"></textarea></div>
+      </div>
+      <div class="modal-pie">
+        <button class="btn-sec" onclick="cerrarVin()">Cancelar</button>
+        <button class="boton" onclick="guardarVinculoManual()">Vincular</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let puedeEditar=false, conceptos=[], docTipo="liquidacion", docId=null, liqLineas=[], facLineas=[];
+
+async function init(){
+  const rme=await fetch("/api/me");
+  if(!rme.ok){ window.location.href="/"; return; }
+  const me=await rme.json();
+  document.getElementById("quien").textContent=me.nombre+" · "+me.rol;
+  if(me.rol==="administrador"){ const nga=document.getElementById("nav-grupo-admin"); if(nga) nga.style.display="flex"; }
+  puedeEditar=(me.rol==="administrador"||me.rol==="coordinador");
+  window.meRol=me.rol;
+  if(puedeEditar){ document.getElementById("btn-nliq").style.display="inline-block";
+    document.getElementById("btn-nfac").style.display="inline-block";
+    document.getElementById("btn-gconcepto").style.display="inline-block"; }
+  else document.getElementById("nota-permiso").style.display="block";
+  const rc=await fetch("/api/conceptos-costo"); if(rc.ok){ const d=await rc.json(); conceptos=d.conceptos||[]; }
+  document.getElementById("md-concepto").innerHTML='<option value="">— sin clasificar —</option>'+conceptos.map(c=>`<option value="${c.id}">${c.codigo} · ${escapar(c.nombre)}</option>`).join("");
+  const hoy=new Date();
+  document.getElementById("g-anio").value=hoy.getFullYear();
+  document.getElementById("g-mes").value=hoy.getMonth()+1;
+  await cargarResumen();
+  await cargarLiqs(); await cargarFacs(); await cargarGastos();
+}
+function verTab(p){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("activa",t.dataset.p===p));
+  document.querySelectorAll(".panel").forEach(pl=>pl.classList.remove("activo"));
+  document.getElementById("p-"+p).classList.add("activo");
+  cargarResumen();
+}
+// ---------- resumen costo de la caja ----------
+async function cargarResumen(){
+  try{
+    const r=await fetch("/api/costo-caja"); const d=await r.json();
+    const el=document.getElementById("caja-resumen");
+    if(!r.ok){ el.textContent="Costo de la caja: "+(d.error||"sin datos"); return; }
+    const peOk=d.punto_equilibrio_ha_sem!=null&&d.produccion_ha_sem>=d.punto_equilibrio_ha_sem;
+    const fmt=n=>n!=null?Number(n).toLocaleString('es-CO'):"—";
+    el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;font-size:13px;align-items:center">
+      <div><small class="dato">Semana ${d.semana.numero} (${d.semana.inicio} → ${d.semana.fin})</small><br>
+        <b style="font-size:17px;color:var(--verde-hondo)">COSTO DE LA CAJA</b><br>
+        <span style="font-size:22px;font-weight:800">$${fmt(d.costo_caja)}</span></div>
+      <div><small class="dato">Producción</small><br><b>${fmt(d.cajas)}</b> cajas<br><small class="dato">${d.produccion_ha_sem} cajas/ha-sem</small></div>
+      <div><small class="dato">Costo fijo</small><br><b>$${fmt(d.costo_fijo_ha_sem)}</b>/ha-sem<br><small class="dato">fijos mes: $${fmt(d.fijos_mes)}</small></div>
+      <div><small class="dato">Costo variable</small><br><b>$${fmt(d.costo_variable_caja)}</b>/caja<br><small class="dato">mat $${fmt(d.materiales_sem)} · MO var $${fmt(d.mo_variable_sem)}</small></div>
+      <div><small class="dato">Ingreso/caja</small><br><b>$${fmt(d.ingreso_caja)}</b><br><small class="dato">${d.liquidacion_ref?("líq. "+escapar(d.liquidacion_ref)):"sin liquidación aprobada"}</small></div>
+      <div><small class="dato">Punto de equilibrio</small><br><b style="font-size:18px;color:${peOk?'var(--verde)':'var(--error)'}">${d.punto_equilibrio_ha_sem!=null?d.punto_equilibrio_ha_sem+" cajas/ha":"—"}</b><br>
+        <small style="color:${peOk?'var(--verde)':'var(--error)'};font-weight:700">${d.punto_equilibrio_ha_sem!=null?(peOk?"POR ENCIMA (gana)":"POR DEBAJO (pierde)"):"capture gastos"}</small></div>
+    </div>`;
+  }catch(e){ document.getElementById("caja-resumen").textContent="Error calculando el costo."; }
+}
+// ---------- liquidaciones ----------
+async function cargarLiqs(){
+  const r=await fetch("/api/liquidaciones"); if(!r.ok) return;
+  const d=await r.json(); const tb=document.getElementById("t-liqs"); tb.innerHTML="";
+  if(!(d.liquidaciones||[]).length){ tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--gris);padding:16px">Sin liquidaciones.</td></tr>'; return; }
+  d.liquidaciones.forEach(l=>{
+    tb.insertAdjacentHTML("beforeend",`<tr><td><b>${escapar(l.embarque||("Líq #"+l.id))}</b></td><td>${l.fecha}</td>
+      <td>${l.estado==='aprobada'?'<span style="color:var(--verde);font-size:11px;font-weight:700">APROBADA</span>':'<span style="color:var(--ambar);font-size:11px;font-weight:700">BORRADOR</span>'}</td>
+      <td><small class="dato">${l.corte_codigo?("Corte "+escapar(l.corte_codigo)+(l.corte_fecha?(" · "+l.corte_fecha):"")):"sin vincular"}</small><br>${l.total_cajas.toLocaleString('es-CO')} cajas · $${Number(l.total_cop).toLocaleString('es-CO')}
+        ${l.corte_codigo&&l.corte_cajas!=null&&l.corte_cajas!==l.total_cajas?`<br><span style="color:var(--error);font-size:11px;font-weight:700">⚠ DISCREPANCIA: corte ${l.corte_cajas} cajas vs líquidación ${l.total_cajas} (${l.corte_cajas-l.total_cajas>0?"+":""}${(l.corte_cajas-l.total_cajas)})</span>${l.nota_discrepancia?`<br><small class="dato">Nota: ${escapar(l.nota_discrepancia)}</small>`:""}`:""}</td>
+      <td>${puedeEditar?`<button class="accion" onclick="abrirLiq(${l.id})">Abrir</button> `:""}${puedeEditar?`<button class="accion" onclick="vincularCorte(${l.id})">${l.corte_codigo?"Re-vincular":"Vincular corte"}</button>`:""}${meRol==="administrador"?` <button class="accion" onclick="borrarLiq(${l.id},'${escapar(l.embarque||("Líq #"+l.id))}',${l.total_cajas},${l.total_cop},'${l.estado}')" style="color:var(--error)">Borrar</button>`:""}</td></tr>`);
+  });
+}
+function abrirLiq(id){
+  docTipo="liquidacion"; docId=id||null; liqLineas=[];
+  document.getElementById("md-titulo").textContent=id?"Editar liquidación":"Nueva liquidación";
+  document.getElementById("camp-numero").style.display="none";
+  document.getElementById("camp-concepto").style.display="none";
+  document.getElementById("camp-totales").style.display="none";
+  document.getElementById("md-aprob").style.display=puedeEditar?"inline-block":"none";
+  document.getElementById("md-fecha").value=new Date().toISOString().slice(0,10);
+  document.getElementById("md-embarque").value=""; document.getElementById("md-tasa").value="";
+  document.getElementById("aviso-doc").textContent=""; document.getElementById("md-ext-info").textContent="";
+  mdPintarLineas();
+  document.getElementById("modal-doc").classList.add("abierto");
+  if(id){ fetch("/api/liquidaciones/"+id).then(r=>r.json()).then(d=>{
+    document.getElementById("md-embarque").value=d.liquidacion.embarque||"";
+    document.getElementById("md-fecha").value=d.liquidacion.fecha;
+    document.getElementById("md-tasa").value=d.liquidacion.tasa_cambio||"";
+    liqLineas=(d.lineas||[]).map(x=>({tipo_caja:x.tipo_caja,cantidad:x.cantidad||"",precio_unit:x.precio_unit||"",incentivo:x.incentivo||"",empaque_especial:x.empaque_especial||""}));
+    mdPintarLineas();
+  });}
+}
+// ---------- facturas ----------
+async function cargarFacs(){
+  const r=await fetch("/api/facturas-compra"); if(!r.ok) return;
+  const d=await r.json(); const tb=document.getElementById("t-facs"); tb.innerHTML="";
+  if(!(d.facturas||[]).length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--gris);padding:16px">Sin facturas.</td></tr>'; return; }
+  d.facturas.forEach(f=>{
+    tb.insertAdjacentHTML("beforeend",`<tr><td><b>${escapar(f.numero||("F #"+f.id))}</b></td><td>${escapar(f.proveedor||"—")}</td><td>${f.fecha}</td>
+      <td class="num">${f.total!=null?"$"+Number(f.total).toLocaleString('es-CO'):"—"}</td>
+      <td>${f.estado==='aprobada'?'<span style="color:var(--verde);font-size:11px;font-weight:700">APROBADA</span>':'<span style="color:var(--ambar);font-size:11px;font-weight:700">BORRADOR</span>'}</td>
+      <td>${puedeEditar?`<button class="accion" onclick="abrirFac(${f.id})">Abrir</button>`:""}</td></tr>`);
+  });
+}
+function abrirFac(id){
+  docTipo="factura"; docId=id||null; facLineas=[];
+  document.getElementById("md-titulo").textContent=id?"Editar factura":"Nueva factura";
+  document.getElementById("camp-embarque").style.display="none";
+  document.getElementById("camp-totales").style.display="block";
+  document.getElementById("md-aprob").style.display=puedeEditar?"inline-block":"none";
+  document.getElementById("md-fecha").value=new Date().toISOString().slice(0,10);
+  document.getElementById("md-numero").value=""; document.getElementById("md-iva").value="";
+  document.getElementById("md-proveedor").value="Tecbaco";
+  document.getElementById("md-concepto").value="";
+  document.getElementById("aviso-doc").textContent=""; document.getElementById("md-ext-info").textContent="";
+  mdPintarLineas();
+  document.getElementById("modal-doc").classList.add("abierto");
+  if(id){ fetch("/api/facturas-compra/"+id).then(r=>r.json()).then(d=>{
+    document.getElementById("md-numero").value=d.factura.numero||"";
+    document.getElementById("md-proveedor").value=d.factura.proveedor||"";
+    document.getElementById("md-fecha").value=d.factura.fecha;
+    document.getElementById("md-concepto").value=d.factura.concepto_id||"";
+    document.getElementById("md-iva").value=d.factura.iva||"";
+    facLineas=(d.lineas||[]).map(x=>({descripcion:x.descripcion,cantidad:x.cantidad||"",vr_unit:x.vr_unit||""}));
+    mdPintarLineas(); mdTotales();
+  });}
+}
+// ---------- lineas genericas ----------
+function mdHead(){
+  document.getElementById("md-head").innerHTML = docTipo==="liquidacion"
+    ? "<tr><th>TIPO CAJA</th><th>CANT.</th><th>PRECIO/CJA</th><th>INCENT.</th><th>EMP. ESPECIAL</th><th></th></tr>"
+    : "<tr><th>DESCRIPCIÓN</th><th>CANT.</th><th>VR UNIT</th><th></th></tr>";
+}
+function mdAddLinea(){
+  if(docTipo==="liquidacion") liqLineas.push({tipo_caja:"",cantidad:"",precio_unit:"",incentivo:"",empaque_especial:""});
+  else facLineas.push({descripcion:"",cantidad:"",vr_unit:""});
+  mdPintarLineas();
+}
+function mdPintarLineas(){
+  mdHead();
+  const tb=document.getElementById("md-lineas"); tb.innerHTML="";
+  const arr=docTipo==="liquidacion"?liqLineas:facLineas;
+  if(!arr.length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--gris);padding:12px">Sin líneas.</td></tr>'; return; }
+  arr.forEach((ln,ix)=>{
+    if(docTipo==="liquidacion"){
+      tb.insertAdjacentHTML("beforeend",`<tr>
+        <td style="padding:2px"><select onchange="liqLineas[${ix}].tipo_caja=this.value">
+          <option value="">— elegir tipo —</option>
+          ${["BANANO STANDARD CONVENCIONAL","BANANO STANDARD EUROPEO 5X20","BANANO DE SEGUNDA SINGLE CONVENCIONAL","BANANO EUROPEO MIXTO","BANANO EUROPEO SMALL","Dole 18kg","Aldi 13kg","Single","Otro"].map(t=>`<option ${ln.tipo_caja===t?"selected":""}>${t}</option>`).join("")}</select></td>
+        <td style="padding:2px"><input type="number" value="${ln.cantidad}" style="width:80px" oninput="liqLineas[${ix}].cantidad=this.value"></td>
+        <td style="padding:2px"><input type="number" value="${ln.precio_unit}" style="width:110px" oninput="liqLineas[${ix}].precio_unit=this.value"></td>
+        <td style="padding:2px"><input type="number" value="${ln.incentivo}" style="width:90px" oninput="liqLineas[${ix}].incentivo=this.value"></td>
+        <td style="padding:2px"><input type="number" value="${ln.empaque_especial}" style="width:90px" oninput="liqLineas[${ix}].empaque_especial=this.value"></td>
+        <td style="padding:2px"><button class="accion" onclick="liqLineas.splice(${ix},1);mdPintarLineas()" style="color:var(--error)">Quitar</button></td></tr>`);
+    } else {
+      tb.insertAdjacentHTML("beforeend",`<tr>
+        <td style="padding:2px"><input type="text" value="${escapar(ln.descripcion)}" style="width:280px" oninput="facLineas[${ix}].descripcion=this.value"></td>
+        <td style="padding:2px"><input type="number" value="${ln.cantidad}" style="width:80px" oninput="facLineas[${ix}].cantidad=this.value;mdTotales()"></td>
+        <td style="padding:2px"><input type="number" value="${ln.vr_unit}" style="width:110px" oninput="facLineas[${ix}].vr_unit=this.value;mdTotales()"></td>
+        <td style="padding:2px"><button class="accion" onclick="facLineas.splice(${ix},1);mdPintarLineas();mdTotales()" style="color:var(--error)">Quitar</button></td></tr>`);
+    }
+  });
+  if(docTipo==="factura") mdTotales();
+}
+function mdTotales(){
+  const s=facLineas.reduce((a,l)=>a+((parseFloat(l.cantidad)||0)*(parseFloat(l.vr_unit)||0)),0);
+  document.getElementById("md-sub").textContent=Math.round(s).toLocaleString('es-CO');
+  const iva=parseFloat(document.getElementById("md-iva").value)||0;
+  document.getElementById("md-total").textContent=Math.round(s+iva).toLocaleString('es-CO');
+}
+// ---------- IA extraction ----------
+async function extraerPDF(){
+  const av=document.getElementById("aviso-doc");
+  const files=document.getElementById("md-pdf").files;
+  if(!files.length){ av.className="aviso error"; av.style.display="block"; av.textContent="Elige primero el PDF o imagen."; return; }
+  av.className="aviso"; av.style.display="block"; av.textContent="Leyendo documento con IA…";
+  document.getElementById("md-extraer").disabled=true;
+  try{
+    const imagenes=[];
+    for(const f of files){
+      if(f.type.startsWith("image/")){
+        imagenes.push(await fileABase64(f));
+      } else {
+        const buf=await f.arrayBuffer();
+        const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+        for(let p=1;p<=Math.min(pdf.numPages,6);p++){
+          const page=await pdf.getPage(p);
+          const vp=page.getViewport({scale:1.6});
+          const canvas=document.createElement("canvas");
+          canvas.width=vp.width; canvas.height=vp.height;
+          await page.render({canvasContext:canvas.getContext("2d"),viewport:vp}).promise;
+          imagenes.push(canvas.toDataURL("image/jpeg",0.85));
+        }
+      }
+    }
+    const r=await fetch("/api/extraer",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({tipo:docTipo==="liquidacion"?"liquidacion":"factura",imagenes})});
+    const d=await r.json();
+    if(!r.ok){ av.className="aviso error"; av.textContent=d.error||"Error en la extracción."; return; }
+    if(!d.datos){ av.className="aviso error"; av.textContent="La IA no devolvió datos legibles. Digite manualmente."; return; }
+    aplicarExtraccion(d.datos);
+    av.className="aviso"; av.style.color="var(--verde)";
+    av.textContent="Extraído con "+d.modelo+". REVISA cada valor antes de guardar.";
+  }catch(e){
+    av.className="aviso error"; av.style.display="block"; av.textContent="Error: "+String(e).slice(0,150);
+  }
+  document.getElementById("md-extraer").disabled=false;
+}
+function fileABase64(f){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
+}
+function aplicarExtraccion(d){
+  if(docTipo==="liquidacion"){
+    if(d.embarque) document.getElementById("md-embarque").value=d.embarque;
+    if(d.fecha) document.getElementById("md-fecha").value=d.fecha;
+    if(d.tasa_cambio) document.getElementById("md-tasa").value=d.tasa_cambio;
+    if(Array.isArray(d.lineas)) liqLineas=d.lineas.map(x=>({tipo_caja:x.tipo_caja||"Otro",cantidad:x.cantidad||"",precio_unit:x.precio_unit||"",incentivo:x.incentivo||"",empaque_especial:x.empaque_especial||""}));
+    mdPintarLineas();
+  } else {
+    if(d.numero) document.getElementById("md-numero").value=d.numero;
+    if(d.proveedor) document.getElementById("md-proveedor").value=d.proveedor;
+    if(d.fecha) document.getElementById("md-fecha").value=d.fecha;
+    if(d.iva!=null) document.getElementById("md-iva").value=d.iva;
+    if(Array.isArray(d.lineas)) facLineas=d.lineas.map(x=>({descripcion:x.descripcion||"",cantidad:x.cantidad||"",vr_unit:x.vr_unit||""}));
+    mdPintarLineas();
+  }
+}
+// ---------- guardar ----------
+async function guardarDoc(aprob){
+  const av=document.getElementById("aviso-doc");
+  const body={ id:docId, fecha:document.getElementById("md-fecha").value };
+  let url, lineasLimpias;
+  if(docTipo==="liquidacion"){
+    url="/api/liquidaciones";
+    body.embarque=document.getElementById("md-embarque").value.trim()||null;
+    body.tasa_cambio=document.getElementById("md-tasa").value||null;
+    const sinTipo=liqLineas.filter(l=>l.cantidad && !l.tipo_caja);
+    if(sinTipo.length){ av.className="aviso error"; av.style.display="block"; av.textContent=`Hay ${sinTipo.length} línea(s) con cantidad pero SIN TIPO de caja. Elígelo en el desplegable de cada línea.`; return; }
+    lineasLimpias=liqLineas.filter(l=>l.cantidad);
+    body.lineas=lineasLimpias;
+    if(!lineasLimpias.length){ av.className="aviso error"; av.style.display="block"; av.textContent="Agrega al menos una línea con cantidad."; return; }
+  } else {
+    url="/api/facturas-compra";
+    body.numero=document.getElementById("md-numero").value.trim()||null;
+    body.proveedor=document.getElementById("md-proveedor").value.trim()||null;
+    body.concepto_id=document.getElementById("md-concepto").value||null;
+    body.iva=document.getElementById("md-iva").value||null;
+    const sub=facLineas.reduce((a,l)=>a+((parseFloat(l.cantidad)||0)*(parseFloat(l.vr_unit)||0)),0);
+    body.subtotal=sub; body.total=sub+(parseFloat(body.iva)||0);
+    lineasLimpias=facLineas.filter(l=>l.descripcion);
+    body.lineas=lineasLimpias;
+    if(!lineasLimpias.length){ av.className="aviso error"; av.style.display="block"; av.textContent="Agrega al menos una línea con descripción."; return; }
+  }
+  const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json();
+  if(!r.ok){ av.className="aviso error"; av.style.display="block"; av.textContent=d.error||"No se pudo guardar."; return; }
+  if(aprob){
+    const r2=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:d.id, estado:"aprobada", fecha:body.fecha})});
+    if(!r2.ok){ const d2=await r2.json(); av.className="aviso error"; av.style.display="block"; av.textContent="Guardado como borrador, pero falló la aprobación: "+(d2.error||""); }
+  }
+  cerrarDoc(); cargarLiqs(); cargarFacs(); cargarResumen();
+}
+function cerrarDoc(){ document.getElementById("modal-doc").classList.remove("abierto"); docId=null; }
+let vinLiqId=null, vinCortes=[];
+async function vincularCorte(id){
+  const r=await fetch("/api/liquidaciones/"+id+"/vincular-corte",{method:"POST"});
+  const d=await r.json();
+  if(d.ok&&d.corte){ alert("Vinculada al corte "+d.corte+" ("+d.corte_fecha+")."); cargarLiqs(); cargarResumen(); return; }
+  if(d.ya_vinculada){ alert("Ya estaba vinculada al corte "+d.ya_vinculada+"."); return; }
+  // no encontrado: abrir vinculacion manual
+  vinLiqId=id;
+  const rc=await fetch("/api/cortes"); const dc=await rc.json();
+  const hoy=new Date(); const hace45=new Date(); hace45.setDate(hoy.getDate()-45);
+  vinCortes=(dc.cortes||[]).filter(c=>c.fecha>=hace45.toISOString().slice(0,10)).slice(0,40);
+  document.getElementById("vm-corte").innerHTML='<option value="">— elige el corte —</option>'+vinCortes.map(c=>`<option value="${c.id}">${escapar(c.codigo)} · ${c.fecha} · ${c.cajas_embarcadas!=null?c.cajas_embarcadas+" cajas":"sin cajas"}</option>`).join("");
+  document.getElementById("vm-nota").value="";
+  document.getElementById("vm-aviso").className="aviso"; document.getElementById("vm-aviso").textContent=
+    "Automático no encontró corte con "+(d.cajas_buscadas||"?")+" cajas (semana anterior ni último mes). Elige el corte manualmente; si las cajas no coinciden, escribe la explicación y quedará marcado como DISCREPANCIA.";
+  document.getElementById("modal-vin").classList.add("abierto");
+}
+async function guardarVinculoManual(){
+  const corteId=document.getElementById("vm-corte").value;
+  const av=document.getElementById("vm-aviso");
+  if(!corteId){ av.className="aviso error"; av.textContent="Elige el corte."; return; }
+  const c=vinCortes.find(x=>String(x.id)===String(corteId));
+  const liq=(await (await fetch("/api/liquidaciones/"+vinLiqId)).json());
+  const lq=liq.liquidacion; const key=liq.lineas.reduce((a,x)=>a+(x.cantidad||0),0);
+  if(c && c.cajas_embarcadas!=null && c.cajas_embarcadas!==key && !document.getElementById("vm-nota").value.trim()){
+    av.className="aviso error"; av.textContent=`Discrepancia: corte ${c.cajas_embarcadas} cajas vs liquidación ${key}. Escribe una nota explicando la diferencia (obligatoria cuando no coinciden).`; return;
+  }
+  const r=await fetch("/api/liquidaciones/"+vinLiqId+"/vincular-manual",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({corte_id:corteId, nota:document.getElementById("vm-nota").value})});
+  const d=await r.json();
+  if(!r.ok){ av.className="aviso error"; av.textContent=d.error||"No se pudo vincular."; return; }
+  cerrarVin(); cargarLiqs(); cargarResumen();
+  alert("Vinculada al corte "+d.corte+(d.corte_cajas!=null?(" ("+d.corte_cajas+" cajas)"):"")+".");
+}
+function cerrarVin(){ document.getElementById("modal-vin").classList.remove("abierto"); vinLiqId=null; }
+async function borrarLiq(id,codigo,cajas,cop,estado){
+  const msg = estado==="aprobada"
+    ? ("⚠️ La liquidación "+codigo+" está APROBADA ("+(cajas||0).toLocaleString('es-CO')+" cajas · $"+Number(cop||0).toLocaleString('es-CO')+").\nBorrarla quita ese ingreso del histórico y del cálculo del costo de la caja.\n\nEscribe el número del embarque para confirmar:")
+    : ("¿Borrar la liquidación "+codigo+"? Esta acción no se puede deshacer.");
+  if(estado==="aprobada"){
+    const t=prompt(msg);
+    if(t===null || t.trim()!==String(codigo)) { if(t!==null) alert("No coincide el número. No se borró nada."); return; }
+  } else if(!confirm(msg)) return;
+  const r=await fetch("/api/liquidaciones/"+id,{method:"DELETE"});
+  const d=await r.json();
+  if(!r.ok){ alert(d.error||"No se pudo borrar."); return; }
+  cargarLiqs(); cargarResumen();
+}
+// ---------- gastos ----------
+async function cargarGastos(){
+  const anio=document.getElementById("g-anio").value, mes=document.getElementById("g-mes").value;
+  const r=await fetch(`/api/gastos-mes?anio=${anio}&mes=${mes}`);
+  const d=await r.json(); if(!r.ok) return;
+  const mapa={}; (d.gastos||[]).forEach(g=>mapa[g.concepto_id]=g);
+  let html='<div class="tabla-caja"><table><thead><tr><th>Código</th><th>Concepto</th><th>Grupo</th><th>Valor del mes (COP)</th><th></th></tr></thead><tbody>';
+  conceptos.forEach(c=>{
+    const g=mapa[c.id];
+    html+=`<tr><td>${c.codigo||""}</td><td>${escapar(c.nombre)}</td><td><small class="dato">${escapar(c.grupo)}${c.es_variable?" · var":""}</small></td>
+      <td style="padding:2px"><input type="number" id="g-${c.id}" value="${g?g.valor:""}" style="width:150px" ${puedeEditar?"":"disabled"}></td>
+      <td>${puedeEditar?`<button class="accion" onclick="guardarGasto(${c.id})">Guardar</button>`:""}</td></tr>`;
+  });
+  html+='</tbody></table></div>';
+  document.getElementById("t-gastos").innerHTML=html;
+}
+async function guardarGasto(cid){
+  const r=await fetch("/api/gastos-mes",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({anio:parseInt(document.getElementById("g-anio").value),mes:parseInt(document.getElementById("g-mes").value),
+      concepto_id:cid,valor:parseFloat(document.getElementById("g-"+cid).value)||0})});
+  if(!r.ok){ const d=await r.json(); alert(d.error||"No se pudo guardar."); return; }
+  cargarResumen();
+}
+function abrirConcepto(){ document.getElementById("modal-conc").classList.add("abierto"); }
+function cerrarConcepto(){ document.getElementById("modal-conc").classList.remove("abierto"); }
+async function guardarConcepto(){
+  const r=await fetch("/api/conceptos-costo",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({codigo:document.getElementById("c-codigo").value.trim()||null,nombre:document.getElementById("c-nombre").value.trim(),
+      grupo:document.getElementById("c-grupo").value,es_variable:document.getElementById("c-var").checked})});
+  if(!r.ok){ const d=await r.json(); document.getElementById("aviso-conc").className="aviso error"; document.getElementById("aviso-conc").textContent=d.error||"Error"; return; }
+  cerrarConcepto(); location.reload();
+}
+async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
+function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+init();
+</script>
+</body>
+</html>

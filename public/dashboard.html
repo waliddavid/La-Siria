@@ -68,6 +68,7 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
       <a href="/dashboard.html" class="activo">Dashboard</a>
       <a href="/reporte.html">Reporte</a>
       <a href="/corte.html">Corte</a>
+      <a href="/costos.html">Costos</a>
     </div>
   </div>
   <div class="grupo">
@@ -160,14 +161,15 @@ async function cargar(){
 function mini(n,t,cls){ return '<div class="mini '+(cls||'')+'"><div class="n">'+n+'</div><div class="t">'+t+'</div></div>'; }
 function pintarFinca(){
   const i=datos.indicadores;
+  const c=datos.corte;
   document.getElementById("mini-finca").innerHTML=
     mini(i.ha_activas+" ha","Hectareas activas")+
     mini(i.lotes_activos,"Lotes activos")+
     mini(Number(i.racimos_semana).toLocaleString('es-CO'),"Racimos/sem")+
     mini(i.racimos_ha_finca,"Racimos/ha")+
     mini(i.pct_finca+"%","% del max ("+datos.max_racimos+")")+
-    mini("sin dato","Ratio (caj/racimo)","pend")+
-    mini("sin dato","Merma","pend");
+    mini(c?c.ratio_procesado:"sin dato","Ratio proc. · "+(c?c.codigo:"—"))+
+    mini(c?c.merma_procesada+"%":"sin dato","Merma proc. · "+(c?c.codigo:"—"));
 }
 function pintarMapa(){
   const svg=document.getElementById("mapa"); svg.innerHTML="";
@@ -196,8 +198,8 @@ function mostrarDetalle(loteId){
       mini(Number(l.embolse_sem).toLocaleString('es-CO'),"Racimos/sem","lote")+
       mini(l.racimos_ha,"Racimos/ha","lote")+
       mini(estado,"Estado","lote")+
-      mini("sin dato","Ratio","lote")+
-      mini("sin dato","Merma","lote")+
+      mini(l.corte_procesados!=null?Number(l.corte_procesados).toLocaleString('es-CO'):"sin dato","Racimos corte","lote")+
+      mini(l.corte_merma_pct!=null?l.corte_merma_pct+"%":"sin dato","Merma corte","lote")+
     '</div>';
 }
 async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }

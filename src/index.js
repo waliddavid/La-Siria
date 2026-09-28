@@ -3062,6 +3062,372 @@ async function handleApi(req, env, path) {
   }
 
   // ==========================================================
+  // COSTO DE LA CAJA (8H-1): liquidaciones + facturas + gastos + IA
+  // ==========================================================
+  // conceptos de costo (catalogo del manual Banacol)
+  if (path === "/api/conceptos-costo" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const { results } = await env.DB.prepare("SELECT * FROM conceptos_costo WHERE activo=1 ORDER BY codigo").all();
+    return json({ conceptos: results });
+  }
+  if (path === "/api/conceptos-costo" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (user.rol !== "administrador") return json({ error: "Solo el administrador." }, 403);
+    const b = await req.json();
+    if (!b.nombre || !b.grupo) return json({ error: "Nombre y grupo son obligatorios." }, 400);
+    const res = await env.DB.prepare("INSERT INTO conceptos_costo (codigo, nombre, grupo, es_variable) VALUES (?,?,?,?)")
+      .bind(b.codigo || null, String(b.nombre).trim(), b.grupo, b.es_variable ? 1 : 0).run();
+    return json({ ok: true, id: res.meta.last_row_id });
+  }
+
+  // guardar una liquidacion de embarque (con lineas), como borrador
+  if (path === "/api/liquidaciones" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!["administrador", "coordinador"].includes(user.rol))
+      return json({ error: "Solo administración o coordinadores." }, 403);
+    const b = await req.json();
+    if (!b.fecha) return json({ error: "La fecha es obligatoria." }, 400);
+    if (b.id) {
+      const l0 = await env.DB.prepare("SELECT id, estado FROM liquidaciones WHERE id=?").bind(b.id).first();
+      if (!l0) return json({ error: "La liquidación no existe." }, 404);
+      if (l0.estado === "aprobada" && b.estado !== "aprobada")
+        return json({ error: "La liquidación está aprobada: no se puede editar. Pídele al administrador que la borre si hay error." }, 400);
+      if (b.estado === "aprobada") {
+        await env.DB.prepare("UPDATE liquidaciones SET estado='aprobada', aprobado_por=?, aprobado_en=datetime('now') WHERE id=?").bind(user.id, b.id).run();
+        await audit(env, user.id, "aprobar", "liquidaciones", b.id, null, null);
+        return json({ ok: true, id: b.id });
+      }
+      await env.DB.prepare("DELETE FROM liquidacion_lineas WHERE liquidacion_id=?").bind(b.id).run();
+      await env.DB.prepare("UPDATE liquidaciones SET corte_id=?, embarque=?, fecha=?, tasa_cambio=?, notas=? WHERE id=?")
+        .bind(b.corte_id || null, b.embarque || null, b.fecha, b.tasa_cambio ?? null, b.notas || null, b.id).run();
+      var lid = b.id;
+    } else {
+      const res = await env.DB.prepare("INSERT INTO liquidaciones (corte_id, embarque, fecha, tasa_cambio, notas) VALUES (?,?,?,?,?)")
+        .bind(b.corte_id || null, b.embarque || null, b.fecha, b.tasa_cambio ?? null, b.notas || null).run();
+      lid = res.meta.last_row_id;
+    }
+    if (Array.isArray(b.lineas)) for (const ln of b.lineas) {
+      if (!ln.tipo_caja || !ln.cantidad) continue;
+      const cant = parseFloat(ln.cantidad) || 0;
+      const pu = parseFloat(ln.precio_unit) || 0;
+      const inc = parseFloat(ln.incentivo) || 0;
+      const ee = parseFloat(ln.empaque_especial) || 0;
+      await env.DB.prepare("INSERT INTO liquidacion_lineas (liquidacion_id, tipo_caja, cantidad, precio_unit, incentivo, empaque_especial, total_linea) VALUES (?,?,?,?,?,?,?)")
+        .bind(lid, String(ln.tipo_caja).trim(), cant, pu || null, inc || null, ee || null, Math.round(cant * (pu + inc + ee))).run();
+    }
+    await audit(env, user.id, b.id ? "editar" : "crear", "liquidaciones", lid, null, { embarque: b.embarque });
+    return json({ ok: true, id: lid });
+  }
+  if (path === "/api/liquidaciones" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const { results } = await env.DB.prepare(
+      `SELECT l.*, c.codigo AS corte_codigo, c.fecha AS corte_fecha, c.cajas_embarcadas AS corte_cajas,
+              COALESCE((SELECT SUM(cantidad) FROM liquidacion_lineas x WHERE x.liquidacion_id=l.id),0) AS total_cajas,
+              COALESCE((SELECT SUM(total_linea) FROM liquidacion_lineas x WHERE x.liquidacion_id=l.id),0) AS total_cop
+       FROM liquidaciones l LEFT JOIN cortes c ON c.id = l.corte_id
+       ORDER BY l.fecha DESC, l.id DESC LIMIT 100`
+    ).all();
+    return json({ liquidaciones: results });
+  }
+  if (path.startsWith("/api/liquidaciones/") && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const lid = parseInt(path.split("/")[3]);
+    const l = await env.DB.prepare("SELECT * FROM liquidaciones WHERE id=?").bind(lid).first();
+    if (!l) return json({ error: "No existe." }, 404);
+    const ln = await env.DB.prepare("SELECT * FROM liquidacion_lineas WHERE liquidacion_id=?").bind(lid).all();
+    return json({ liquidacion: l, lineas: ln.results });
+  }
+  if (path.startsWith("/api/liquidaciones/") && req.method === "DELETE") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (user.rol !== "administrador") return json({ error: "Solo el administrador." }, 403);
+    const lid = parseInt(path.split("/")[3]);
+    const l0 = await env.DB.prepare("SELECT estado FROM liquidaciones WHERE id=?").bind(lid).first();
+    if (!l0) return json({ error: "No existe." }, 404);
+    await env.DB.prepare("DELETE FROM liquidacion_lineas WHERE liquidacion_id=?").bind(lid).run();
+    await env.DB.prepare("DELETE FROM liquidaciones WHERE id=?").bind(lid).run();
+    return json({ ok: true });
+  }
+
+  // vincular una liquidacion con su corte buscando por numero de cajas:
+  // primero en la semana anterior al zarpe, luego en el ultimo mes. Reintentable.
+  if (path.match(/^\/api\/liquidaciones\/\d+\/vincular-corte$/) && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!["administrador", "coordinador"].includes(user.rol))
+      return json({ error: "Solo administración o coordinadores." }, 403);
+    const lid = parseInt(path.split("/")[3]);
+    const l = await env.DB.prepare("SELECT * FROM liquidaciones WHERE id=?").bind(lid).first();
+    if (!l) return json({ error: "La liquidación no existe." }, 404);
+    if (l.corte_id) {
+      const ya = await env.DB.prepare("SELECT codigo FROM cortes WHERE id=?").bind(l.corte_id).first();
+      return json({ ok: true, ya_vinculada: ya ? ya.codigo : l.corte_id });
+    }
+    const key = await env.DB.prepare("SELECT COALESCE(SUM(cantidad),0) AS n FROM liquidacion_lineas WHERE liquidacion_id=?").bind(lid).first();
+    const cajas = key ? key.n : 0;
+    if (!cajas) return json({ ok: false, msg: "La liquidación no tiene cajas." }, 400);
+    // semana del zarpe -> semana anterior
+    const d = new Date(l.fecha + "T00:00:00");
+    const dow = (d.getDay() + 6) % 7;
+    const lunes = new Date(d); lunes.setDate(d.getDate() - dow - 7);
+    const dom = new Date(lunes); dom.setDate(lunes.getDate() + 6);
+    const f1 = lunes.toISOString().slice(0, 10), f2 = dom.toISOString().slice(0, 10);
+    let cand = await env.DB.prepare(
+      "SELECT id, codigo, fecha FROM cortes WHERE fecha BETWEEN ? AND ? AND cajas_embarcadas = ? ORDER BY ABS(julianday(fecha) - julianday(?)) LIMIT 1"
+    ).bind(f1, f2, cajas, l.fecha).first();
+    if (!cand) {
+      const hace30 = new Date(d); hace30.setDate(d.getDate() - 30);
+      cand = await env.DB.prepare(
+        "SELECT id, codigo, fecha FROM cortes WHERE fecha BETWEEN ? AND ? AND cajas_embarcadas = ? ORDER BY ABS(julianday(fecha) - julianday(?)) LIMIT 1"
+      ).bind(hace30.toISOString().slice(0, 10), l.fecha, cajas, l.fecha).first();
+    }
+    if (!cand) return json({ ok: false, msg: "No encontrado", cajas_buscadas: cajas,
+      rango: f1 + " → " + f2 });
+    await env.DB.prepare("UPDATE liquidaciones SET corte_id=? WHERE id=?").bind(cand.id, lid).run();
+    await audit(env, user.id, "vincular", "liquidaciones", lid, null, { corte: cand.codigo });
+    return json({ ok: true, corte: cand.codigo, corte_fecha: cand.fecha });
+  }
+
+  // vinculacion MANUAL de liquidacion a corte (cuando las cajas no coinciden o el
+  // automatico no encontro). Guarda nota de discrepancia; el listado marca en rojo.
+  if (path.match(/^\/api\/liquidaciones\/\d+\/vincular-manual$/) && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!["administrador", "coordinador"].includes(user.rol))
+      return json({ error: "Solo administración o coordinadores." }, 403);
+    const lid = parseInt(path.split("/")[3]);
+    const b = await req.json();
+    if (!b.corte_id) return json({ error: "Elige el corte." }, 400);
+    const l = await env.DB.prepare("SELECT id FROM liquidaciones WHERE id=?").bind(lid).first();
+    if (!l) return json({ error: "La liquidación no existe." }, 404);
+    const c = await env.DB.prepare("SELECT id, codigo, cajas_embarcadas FROM cortes WHERE id=?").bind(b.corte_id).first();
+    if (!c) return json({ error: "El corte no existe." }, 404);
+    await env.DB.prepare("UPDATE liquidaciones SET corte_id=?, nota_discrepancia=? WHERE id=?")
+      .bind(c.id, b.nota ? String(b.nota).trim() : null, lid).run();
+    await audit(env, user.id, "vincular_manual", "liquidaciones", lid, null,
+                { corte: c.codigo, nota: b.nota });
+    return json({ ok: true, corte: c.codigo, corte_cajas: c.cajas_embarcadas });
+  }
+
+  // facturas de compra (materiales/insumos) — tambien extraibles con IA
+  if (path === "/api/facturas-compra" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!["administrador", "coordinador", "almacen"].includes(user.rol))
+      return json({ error: "Solo administración, coordinadores o almacén." }, 403);
+    const b = await req.json();
+    if (!b.fecha) return json({ error: "La fecha es obligatoria." }, 400);
+    if (b.id) {
+      const f0e = await env.DB.prepare("SELECT estado FROM facturas_compra WHERE id=?").bind(b.id).first();
+      if (f0e && f0e.estado === "aprobada" && b.estado !== "aprobada")
+        return json({ error: "La factura está aprobada: no se puede editar." }, 400);
+      if (b.estado === "aprobada") {
+        await env.DB.prepare("UPDATE facturas_compra SET estado='aprobada', aprobado_por=?, aprobado_en=datetime('now') WHERE id=?").bind(user.id, b.id).run();
+        await audit(env, user.id, "aprobar", "facturas_compra", b.id, null, null);
+        return json({ ok: true, id: b.id });
+      }
+      await env.DB.prepare("DELETE FROM factura_lineas WHERE factura_id=?").bind(b.id).run();
+      await env.DB.prepare("UPDATE facturas_compra SET proveedor=?, numero=?, fecha=?, concepto_id=?, subtotal=?, iva=?, total=? WHERE id=?")
+        .bind(b.proveedor || null, b.numero || null, b.fecha, b.concepto_id || null,
+              b.subtotal ?? null, b.iva ?? null, b.total ?? null, b.id).run();
+      var fid = b.id;
+    } else {
+      const res = await env.DB.prepare("INSERT INTO facturas_compra (proveedor, numero, fecha, concepto_id, subtotal, iva, total) VALUES (?,?,?,?,?,?,?)")
+        .bind(b.proveedor || null, b.numero || null, b.fecha, b.concepto_id || null,
+              b.subtotal ?? null, b.iva ?? null, b.total ?? null).run();
+      fid = res.meta.last_row_id;
+    }
+    if (Array.isArray(b.lineas)) for (const ln of b.lineas) {
+      if (!ln.descripcion) continue;
+      const cant = parseFloat(ln.cantidad) || 0, vu = parseFloat(ln.vr_unit) || 0;
+      await env.DB.prepare("INSERT INTO factura_lineas (factura_id, descripcion, cantidad, vr_unit, total) VALUES (?,?,?,?,?)")
+        .bind(fid, String(ln.descripcion).trim(), cant || null, vu || null, ln.total ?? (Math.round(cant * vu * 100) / 100)).run();
+    }
+    await audit(env, user.id, b.id ? "editar" : "crear", "facturas_compra", fid, null, { numero: b.numero });
+    return json({ ok: true, id: fid });
+  }
+  if (path === "/api/facturas-compra" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const { results } = await env.DB.prepare("SELECT * FROM facturas_compra ORDER BY fecha DESC, id DESC LIMIT 200").all();
+    return json({ facturas: results });
+  }
+  if (path.startsWith("/api/facturas-compra/") && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const f = await env.DB.prepare("SELECT * FROM facturas_compra WHERE id=?").bind(parseInt(path.split("/")[3])).first();
+    if (!f) return json({ error: "No existe." }, 404);
+    const ln = await env.DB.prepare("SELECT * FROM factura_lineas WHERE factura_id=?").bind(f.id).all();
+    return json({ factura: f, lineas: ln.results });
+  }
+
+  // gastos manuales del mes (servicios, terceros, administracion)
+  if (path === "/api/gastos-mes" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!["administrador", "coordinador"].includes(user.rol))
+      return json({ error: "Solo administración o coordinadores." }, 403);
+    const b = await req.json();
+    if (!b.anio || !b.mes || !b.concepto_id || !(parseFloat(b.valor) >= 0))
+      return json({ error: "Faltan año, mes, concepto o valor." }, 400);
+    await env.DB.prepare(
+      `INSERT INTO gastos_mes (anio, mes, concepto_id, valor, nota) VALUES (?,?,?,?,?)
+       ON CONFLICT(anio, mes, concepto_id) DO UPDATE SET valor=excluded.valor, nota=excluded.nota`
+    ).bind(b.anio, b.mes, b.concepto_id, parseFloat(b.valor), b.nota || null).run();
+    return json({ ok: true });
+  }
+  if (path === "/api/gastos-mes" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const sp5 = new URL(req.url).searchParams;
+    const anio = parseInt(sp5.get("anio")) || new Date().getFullYear();
+    const mes = parseInt(sp5.get("mes")) || (new Date().getMonth() + 1);
+    const { results } = await env.DB.prepare(
+      `SELECT g.*, c.codigo, c.nombre, c.grupo, c.es_variable FROM gastos_mes g
+       JOIN conceptos_costo c ON c.id = g.concepto_id WHERE g.anio=? AND g.mes=? ORDER BY c.codigo`
+    ).bind(anio, mes).all();
+    return json({ gastos: results, anio, mes });
+  }
+
+  // calculo semanal del costo de la caja (formula del manual Banacol p.33)
+  if (path === "/api/costo-caja" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const sp6 = new URL(req.url).searchParams;
+    const fecha = sp6.get("fecha") || new Date().toISOString().slice(0, 10);
+    const dow = (new Date(fecha + "T00:00:00").getDay() + 6) % 7;
+    const lunes = new Date(fecha); lunes.setDate(lunes.getDate() - dow);
+    const dom = new Date(lunes); dom.setDate(lunes.getDate() + 6);
+    const f1 = lunes.toISOString().slice(0, 10), f2 = dom.toISOString().slice(0, 10);
+    const semana = 1 + Math.round(((new Date(fecha + "T00:00:00")) - new Date(lunes.getFullYear(), 0, 4)) / 604800000);
+    // produccion de la semana (cortes)
+    const prod = await env.DB.prepare(
+      "SELECT COALESCE(SUM(cajas_embarcadas),0) AS cajas FROM cortes WHERE fecha BETWEEN ? AND ?"
+    ).bind(f1, f2).first();
+    const cajas = prod ? prod.cajas : 0;
+    // hectareas cultivadas (version vigente de lotes activos)
+    const haQ = await env.DB.prepare(
+      `SELECT COALESCE(SUM(lv.hectareas),0) AS ha FROM lotes l
+       JOIN lote_versiones lv ON lv.lote_id = l.id AND lv.id = (
+         SELECT id FROM lote_versiones WHERE lote_id = l.id ORDER BY vigente_desde DESC, id DESC LIMIT 1)
+       WHERE l.activo = 1`
+    ).first();
+    const ha = haQ && haQ.ha > 0 ? haQ.ha : 75.12;
+    // materiales consumidos en la semana (salidas con costo PEPS)
+    const mat = await env.DB.prepare(
+      "SELECT COALESCE(SUM(costo_total),0) AS v FROM salidas_almacen WHERE fecha BETWEEN ? AND ? AND costo_total IS NOT NULL"
+    ).bind(f1, f2).first();
+    const materiales = mat ? mat.v : 0;
+    // mano de obra variable de la semana (reporte x precio_unidad de labores variables)
+    const moQ = await env.DB.prepare(
+      `SELECT COALESCE(SUM(r.cantidad_ejecutada * l.precio_unidad),0) AS v
+       FROM reporte_labores r JOIN labores l ON l.id = r.labor_id
+       WHERE r.fecha BETWEEN ? AND ? AND (l.es_variable = 1 OR UPPER(COALESCE(l.categoria_costo,'')) LIKE '%VARIABLE%')`
+    ).bind(f1, f2).first();
+    const moVariable = moQ ? moQ.v : 0;
+    // gastos fijos del mes prorrateados
+    const anio = new Date(fecha).getFullYear(), mes = new Date(fecha).getMonth() + 1;
+    const gf = await env.DB.prepare(
+      `SELECT COALESCE(SUM(g.valor),0) AS v FROM gastos_mes g JOIN conceptos_costo c ON c.id=g.concepto_id
+       WHERE g.anio=? AND g.mes=? AND c.es_variable = 0`
+    ).bind(anio, mes).first();
+    const fijosMes = gf ? gf.v : 0;
+    const fijosSemana = fijosMes / 4.33;
+    // ingreso por caja: ultima liquidacion aprobada
+    const liq = await env.DB.prepare(
+      `SELECT l.id, l.embarque, l.fecha, COALESCE(SUM(x.cantidad),0) AS cajas,
+              COALESCE(SUM(x.total_linea),0) AS total
+       FROM liquidaciones l JOIN liquidacion_lineas x ON x.liquidacion_id = l.id
+       WHERE l.estado='aprobada' GROUP BY l.id ORDER BY l.fecha DESC, l.id DESC LIMIT 1`
+    ).first();
+    let ingresoCaja = null;
+    if (liq && liq.cajas > 0) ingresoCaja = Math.round(liq.total / liq.cajas);
+    // calculo
+    const prodHaSem = ha > 0 ? cajas / ha : 0;
+    const fijoHaSem = ha > 0 ? fijosSemana / ha : 0;
+    const cvCaja = cajas > 0 ? (materiales + moVariable) / cajas : null;
+    const costoCaja = (prodHaSem > 0 && cvCaja != null) ? Math.round(fijoHaSem / prodHaSem + cvCaja) : null;
+    let peHaSem = null;
+    if (ingresoCaja && cvCaja != null && (ingresoCaja - cvCaja) > 0 && ha > 0)
+      peHaSem = Math.round((fijosSemana / (ingresoCaja - cvCaja)) / ha * 100) / 100;
+    return json({ semana: { inicio: f1, fin: f2, numero: semana },
+      cajas, hectareas: ha, produccion_ha_sem: Math.round(prodHaSem * 100) / 100,
+      fijos_mes: fijosMes, fijos_semana: Math.round(fijosSemana),
+      materiales_sem: Math.round(materiales), mo_variable_sem: Math.round(moVariable),
+      costo_variable_caja: cvCaja != null ? Math.round(cvCaja) : null,
+      costo_fijo_ha_sem: Math.round(fijoHaSem),
+      costo_caja: costoCaja, ingreso_caja: ingresoCaja,
+      punto_equilibrio_ha_sem: peHaSem,
+      liquidacion_ref: liq ? liq.embarque : null });
+  }
+
+  // extraccion con IA (facturas y liquidaciones). Proveedor configurado; Kimi/Moonshot por defecto.
+  if (path === "/api/extraer" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (!["administrador", "coordinador"].includes(user.rol))
+      return json({ error: "Solo administración o coordinadores." }, 403);
+    const b = await req.json();
+    if (!b.tipo || !Array.isArray(b.imagenes) || !b.imagenes.length)
+      return json({ error: "Falta el tipo (factura|liquidacion) y las imágenes." }, 400);
+    if (!env.MOONSHOT_API_KEY && !env.OPENAI_API_KEY && !env.ANTHROPIC_API_KEY)
+      return json({ error: "IA no configurada: falta la API key (wrangler secret put)." }, 400);
+    const cfgL = await env.DB.prepare("SELECT valor FROM configuracion WHERE clave='ia_modelo_extraccion'").first();
+    const modelo = (cfgL && cfgL.valor) || "kimi-k2.6";
+    let prompt;
+    if (b.tipo === "factura") {
+      prompt = `Eres un extractor de datos de facturas colombianas de insumos agrícolas (banano). Lee la(s) imagen(es) y devuelve SOLO un JSON válido con esta estructura exacta, sin texto adicional:
+{"proveedor": "...", "numero": "...", "fecha": "YYYY-MM-DD", "lineas": [{"descripcion": "...", "cantidad": 0, "vr_unit": 0, "total": 0}], "subtotal": 0, "iva": 0, "total": 0}
+Reglas: valores numéricos sin símbolos ni separadores de miles; si un dato no se ve, usa null; no inventes valores.`;
+    } else {
+      prompt = `Eres un extractor de liquidaciones de banano (embarques Tecbaco/Dole). Lee la(s) imagen(es) y devuelve SOLO un JSON válido con esta estructura exacta, sin texto adicional:
+{"embarque": "...", "fecha": "YYYY-MM-DD", "tasa_cambio": 0, "lineas": [{"tipo_caja": "Dole 18kg|Aldi 13kg|Single|Otro", "cantidad": 0, "precio_unit": 0, "incentivo": 0, "empaque_especial": 0}]}
+Los precios van en pesos colombianos por caja; incentivos y empaque especial por caja si vienen separados; si un dato no se ve, usa null; no inventes valores.`;
+    }
+    const contenido = [{ type: "text", text: prompt }];
+    for (const img of b.imagenes.slice(0, 8))
+      contenido.push({ type: "image_url", image_url: { url: img } });
+    let resp;
+    try {
+      if (env.MOONSHOT_API_KEY) {
+        resp = await fetch("https://api.moonshot.ai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + env.MOONSHOT_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: modelo, temperature: 0, messages: [{ role: "user", content: contenido }],
+                                 response_format: { type: "json_object" } })
+        });
+      } else if (env.OPENAI_API_KEY) {
+        resp = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + env.OPENAI_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: modelo || "gpt-4o-mini", temperature: 0, messages: [{ role: "user", content: contenido }],
+                                 response_format: { type: "json_object" } })
+        });
+      }
+      if (!resp || !resp.ok) {
+        const tx = resp ? await resp.text() : "sin respuesta";
+        return json({ error: "Error del proveedor IA: " + tx.slice(0, 300) }, 502);
+      }
+      const data = await resp.json();
+      const texto = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : "";
+      let parsed = null;
+      try { parsed = JSON.parse(texto); } catch (e) {
+        const m2 = texto.match(/\{[\s\S]*\}/);
+        if (m2) { try { parsed = JSON.parse(m2[0]); } catch (e2) {} }
+      }
+      await audit(env, user.id, "extraer", "ia", null, null, { tipo: b.tipo, modelo });
+      return json({ ok: true, datos: parsed, modelo });
+    } catch (e) {
+      return json({ error: "Falló la llamada a la IA: " + String(e).slice(0, 200) }, 502);
+    }
+  }
+
+  // ==========================================================
   // CENTRO DE PENDIENTES (notificaciones)
   // ==========================================================
   // contadores para la campanita (por resolver = rojo, por leer = azul)
@@ -3306,6 +3672,15 @@ async function handleApi(req, env, path) {
     ).all();
     const embMap = {};
     for (const e of embQ.results) embMap[e.lote_id] = e.prom || 0;
+    // 8G-3: datos reales de cortes (empacadora)
+    const ultimoCorte = await env.DB.prepare(
+      "SELECT codigo, fecha, semana, ratio_cortado, ratio_procesado, merma_cortada, merma_procesada, tot_cortados, tot_procesados, cajas_embarcadas FROM cortes ORDER BY fecha DESC, id DESC LIMIT 1"
+    ).first();
+    const corteLotesQ = await env.DB.prepare(
+      "SELECT lote_id, SUM(cortados) AS cortados, SUM(recusados) AS recusados, SUM(procesados) AS procesados FROM inspeccion_viajes GROUP BY lote_id"
+    ).all();
+    const corteMap = {};
+    for (const r of corteLotesQ.results) corteMap[r.lote_id] = r;
     const lotes = [];
     let racimosTotal = 0, haActivas = 0;
     for (const l of lotesQ.results) {
@@ -3316,13 +3691,16 @@ async function handleApi(req, env, path) {
       let color = "gris";
       if (!l.activo) color = "suspendido";
       else if (emb > 0) { color = pct >= 90 ? "verde" : (pct >= 80 ? "amarillo" : "rojo"); }
+      const cr = corteMap[l.id];
       lotes.push({ id: l.id, nombre: l.nombre, activo: l.activo, hectareas: ha,
-        embolse_sem: Math.round(emb), racimos_ha: Math.round(racimosHa * 10) / 10, pct: Math.round(pct), color });
+        embolse_sem: Math.round(emb), racimos_ha: Math.round(racimosHa * 10) / 10, pct: Math.round(pct), color,
+        corte_procesados: cr ? cr.procesados : null,
+        corte_merma_pct: cr && cr.cortados > 0 ? Math.round((cr.recusados / cr.cortados) * 1000) / 10 : null });
       if (l.activo) { racimosTotal += emb; haActivas += ha; }
     }
     const racimosHaFinca = haActivas > 0 ? racimosTotal / haActivas : 0;
     return json({
-      max_racimos: maxRacimos, lotes,
+      max_racimos: maxRacimos, lotes, corte: ultimoCorte || null,
       indicadores: {
         ha_activas: Math.round(haActivas * 100) / 100,
         racimos_semana: Math.round(racimosTotal),
