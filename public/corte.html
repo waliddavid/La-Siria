@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Corte — La Siria</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root{--verde-hondo:#1d3b2a;--verde:#2e5e3a;--verde-claro:#4a7c59;--crema:#f5f3ec;
     --tierra:#c9a227;--tinta:#22271f;--gris:#6b7169;--linea:#e2e2d8;--error:#a4443a;--fondo:#eceadf;--ambar:#8a6d1b}
@@ -79,6 +80,9 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
 .submenu a{display:block;padding:8px 12px;border-radius:6px;color:#2c4a33;font-size:13px;white-space:nowrap}
 .submenu a:hover{background:#eef4ee;color:#1d3a24}
 .submenu a.activo{background:var(--verde);color:#fff;font-weight:700}
+.btn-ia{background:#7c3aed;color:#fff;border:none;font-weight:600}
+.btn-ia:hover{background:#6d28d9}
+.btn-ia:disabled{opacity:.55}
 </style>
 </head>
 <body>
@@ -96,7 +100,6 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
       <a href="/dashboard.html">Dashboard</a>
       <a href="/reporte.html">Reporte</a>
       <a href="/corte.html">Corte</a>
-      <a href="/costos.html">Costos</a>
     </div>
   </div>
   <div class="grupo">
@@ -106,6 +109,12 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
       <a href="/asignacion.html">Asignación Coordinadores</a>
       <a href="/labores.html">Labores</a>
       <a href="/deberser.html">Deber ser</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Contabilidad</span>
+    <div class="submenu">
+      <a href="/costos.html">Costos</a>
     </div>
   </div>
   <div class="grupo">
@@ -150,10 +159,10 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
     <div id="nota-permiso" class="aviso" style="display:none">Solo administración y coordinadores pueden registrar cortes.</div>
 
     <div class="tabs">
-      <button class="tab activa" data-p="informe" onclick="verTab('informe')">Informe General</button>
-      <button class="tab" data-p="inspeccion" onclick="verTab('inspeccion')">Inspección de Racimos</button>
+      <button class="tab activa" data-p="informe" onclick="verTab('informe')">Informe General (F.A. 16)</button>
+      <button class="tab" data-p="inspeccion" onclick="verTab('inspeccion')">Inspección de Racimos (F.A. 14)</button>
       <button class="tab" data-p="rechazados" onclick="verTab('rechazados')">Rechazados (F.A. 20)</button>
-      <button class="tab" data-p="manifiesto" onclick="verTab('manifiesto')">Manifiesto</button>
+      <button class="tab" data-p="manifiesto" onclick="verTab('manifiesto')">Manifiesto (FAG-005)</button>
       <button class="tab" data-p="lista" onclick="verTab('lista')">Cortes registrados</button>
     </div>
 
@@ -161,10 +170,15 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
     <div class="panel activo" id="p-informe">
       <div class="tabla-caja" style="padding:18px 20px">
         <div style="font-weight:700;font-size:15px;margin-bottom:12px;letter-spacing:.5px">INFORME GENERAL DE CORTE DIARIO — F.A. 16</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+          <input type="file" id="cx-pdf" accept="application/pdf,image/*" multiple>
+          <button class="boton btn-ia" id="cx-btn" onclick="extraerCorte()">✨ Extraer con IA (F.A. 16)</button>
+          <small class="dato" id="cx-info">Sube el formato escaneado y la IA lo pre-llena; revisa antes de guardar.</small>
+        </div>
         <div id="aviso-corte" class="aviso"></div>
         <div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));display:grid;gap:10px">
           <div class="campo"><label>Finca</label><input type="text" id="f-finca" value="Siria #1"></div>
-          <div class="campo"><label>Corte No.</label><input type="text" id="f-codigo" placeholder="S-39" oninput="pintarEmbarque()"></div>
+          <div class="campo"><label>Corte No.</label><input type="text" id="f-codigo" placeholder="S-02-06 (semana-día)" oninput="pintarEmbarque()"></div>
           <div class="campo"><label>Destino</label><input type="text" id="f-destino" placeholder="USA"></div>
           <div class="campo"><label>Código</label><input type="text" id="f-codfinca" value="105"></div>
           <div class="campo"><label>Fecha</label><input type="date" id="f-fecha" onchange="alCambiarFecha()"></div>
@@ -246,6 +260,11 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
     <div class="panel" id="p-inspeccion">
       <div class="tabla-caja" style="padding:18px 20px">
         <div style="font-weight:700;font-size:15px;margin-bottom:12px;letter-spacing:.5px">REPORTE DE INSPECCIÓN — RACIMOS · F.A. 14</div><div class="verif-caja" style="margin-bottom:12px">Embarque/Corte: <b id="embarque-info">—</b> <small class="dato">(se edita en Informe General)</small></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <input type="file" id="fa14-pdf" accept="application/pdf,image/*" multiple>
+          <button class="boton btn-ia" id="fa14-btn" onclick="extraerFA14()">✨ Extraer F.A. 14</button>
+          <small class="dato" id="fa14-info">Viajes y muestreo se pre-llenan; los lotes se emparejan por nombre.</small>
+        </div>
         <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--verde-hondo)">POR VIAJE (procesados = cortados − recusados, automático)</div>
         <div class="tabla-caja" style="padding:0;overflow-x:auto;max-height:none">
           <table style="font-size:12.5px">
@@ -255,6 +274,16 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
           </table>
         </div>
         <button type="button" class="btn-sec" onclick="addViaje()" style="margin-top:6px">+ Agregar viaje</button>
+
+        <div style="font-weight:700;font-size:13px;margin:16px 0 8px;color:var(--verde-hondo)">DETALLE POR EDAD Y CINTA (cruce del F.A. 14: cada tanda del viaje con su edad y color)</div>
+        <div class="tabla-caja" style="padding:0;overflow-x:auto;max-height:none">
+          <table style="font-size:12.5px">
+            <thead><tr><th>VIAJE</th><th>EDAD (sem)</th><th>COLOR / CINTA</th><th>CORTADOS</th><th></th></tr></thead>
+            <tbody id="t-vedades"></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn-sec" onclick="addViajeEdad()" style="margin-top:6px">+ Agregar línea de edad</button>
+        <div style="margin-top:6px;font-size:12px;color:var(--gris)">Cuando hay detalle, el "Cortados" de cada viaje se calcula solo como la suma de sus edades. Ej: viaje 1 = 21 (12sem Negra) + 15 (11sem Verde) + 9 (10sem Azul) = 45.</div>
 
         <div style="font-weight:700;font-size:13px;margin:16px 0 8px;color:var(--verde-hondo)">MUESTREO DE RACIMOS</div>
         <div class="tabla-caja" style="padding:0;overflow-x:auto;max-height:none">
@@ -276,6 +305,11 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
     <div class="panel" id="p-rechazados">
       <div class="tabla-caja" style="padding:18px 20px">
         <div style="font-weight:700;font-size:15px;margin-bottom:12px;letter-spacing:.5px">REPORTE RACIMOS RECHAZADOS POR DEFECTO — F.A. 20</div><div class="verif-caja" style="margin-bottom:12px">Embarque/Corte: <b id="embarque-info">—</b> <small class="dato">(se edita en Informe General)</small></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <input type="file" id="fa20-pdf" accept="application/pdf,image/*" multiple>
+          <button class="boton btn-ia" id="fa20-btn" onclick="extraerFA('fa20-pdf','fa20-btn','fa20-info','fa20',prefillFa20)">✨ Extraer F.A. 20</button>
+          <small class="dato" id="fa20-info">Los rechazados se AGREGAN: si el mismo día entregan 2× F.A. 20, extrae ambos y se acumulan.</small>
+        </div>
         <div class="tabla-caja" style="padding:0;overflow-x:auto;max-height:none">
           <table style="font-size:12.5px">
             <thead><tr><th>LOTE</th><th>EDAD</th><th>MANO</th><th>CALIB.</th><th>DEFECTO</th><th></th></tr></thead>
@@ -296,7 +330,12 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
     <!-- PANEL MANIFIESTO (FAG-005) -->
     <div class="panel" id="p-manifiesto">
       <div class="tabla-caja" style="padding:18px 20px">
-        <div style="font-weight:700;font-size:15px;margin-bottom:12px;letter-spacing:.5px">MANIFIESTO DE PRODUCCIÓN — FAG-005 (Tecbaco)</div><div class="verif-caja" style="margin-bottom:12px">Embarque/Corte: <b id="embarque-info">—</b> <small class="dato">(se edita en Informe General)</small></div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px;letter-spacing:.5px">MANIFIESTO DE PRODUCCIÓN — FAG-005 (Tecbaco)</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+          <input type="file" id="fag-pdf" accept="application/pdf,image/*" multiple>
+          <button class="boton btn-ia" id="fag-btn" onclick="extraerFA('fag-pdf','fag-btn','fag-info','fag005',prefillFag005)">✨ Extraer FAG-005</button>
+          <small class="dato" id="fag-info">Sellos, placa y pallets (DSN) se pre-llenan. Los pallets se AGREGAN entre formatos.</small>
+        </div><div class="verif-caja" style="margin-bottom:12px">Embarque/Corte: <b id="embarque-info">—</b> <small class="dato">(se edita en Informe General)</small></div>
         <div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));display:grid;gap:10px;margin-bottom:12px">
           <div class="campo"><label>No. Manifiesto</label><input type="text" id="m-no"></div>
           <div class="campo"><label>Contenedor</label><input type="text" id="m-cont"></div>
@@ -323,7 +362,7 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
     <div class="panel" id="p-lista">
       <div class="tabla-caja">
         <table>
-          <thead><tr><th>Corte No.</th><th>Fecha</th><th>Sem.</th><th>Finca</th><th>Destino</th><th>Cortados</th><th>Recusados</th><th>Procesados</th><th>Cajas emb.</th><th></th></tr></thead>
+          <thead><tr><th>Corte No.</th><th>Fecha</th><th>Sem.</th><th>Finca</th><th>Destino</th><th>Cortados</th><th>Recusados</th><th>Procesados</th><th>Cajas emb.</th><th>Proy. vs real</th><th></th></tr></thead>
           <tbody id="t-cortes"></tbody>
         </table>
       </div>
@@ -334,7 +373,7 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
 let puedeEditar=false, lotes=[], viajes=[], muestreo=[], cajasrel=[], cosechaAuto={}, corteActualId=null;
 const EDADES=[8,9,10,11,12,13];
 const DEFECTOS={"01":"POBRE","02":"MADURO","03":"LLENO","04":"COLASPIS","05":"M. MADUREZ","06":"SOBRE-EDAD","07":"SOBRECALIBRE","08":"BAJOCALIBRE","09":"MALTRATO","10":"FUMAGINA","11":"M. ROJA","12":"SOL/BOLSA","13":"C. CABLE","14":"C. CAMPO","15":"ÁCAROS","16":"OTROS"};
-let rechazados=[], pallets=[];
+let rechazados=[], pallets=[], viajeEdades=[];
 
 async function init(){
   const rme=await fetch("/api/me");
@@ -349,7 +388,7 @@ async function init(){
   document.getElementById("f-fecha").value=new Date().toISOString().slice(0,10);
   await alCambiarFecha();
   pintarEmbarque();
-  pintarEdades(); pintarViajes(); pintarMuestreo(); pintarCajasRel(); pintarRechazados(); pintarPallets();
+  pintarEdades(); pintarViajes(); pintarMuestreo(); pintarCajasRel(); pintarRechazados(); pintarPallets(); pintarViajeEdades();
   ["d-p18","d-p13","d-psingle","d-potras"].forEach(id=>document.getElementById(id).addEventListener("input",pintarSuma));
   cargarCortes();
 }
@@ -369,6 +408,13 @@ async function alCambiarFecha(){
     if(r.ok){
       document.getElementById("f-semana").value=d.semana;
       cosechaAuto=d.cosecha||{};
+      // sugerir numero de corte S-<semana>-<dia> si el campo esta vacio
+      const codEl=document.getElementById("f-codigo");
+      if(codEl && !codEl.value.trim()){
+        const dia=new Date(f+"T00:00:00").getDate();
+        codEl.value="S-"+String(d.semana).padStart(2,"0")+"-"+String(dia).padStart(2,"0");
+        pintarEmbarque();
+      }
     } else document.getElementById("f-semana").value="";
   }catch(e){}
   pintarEdades();
@@ -402,10 +448,20 @@ function pintarViajes(){
   const tb=document.getElementById("t-viajes"); tb.innerHTML="";
   if(!viajes.length){ tb.innerHTML='<tr><td colspan="6" style="color:var(--gris);text-align:center;padding:14px">Sin viajes registrados.</td></tr>'; }
   viajes.forEach((v,ix)=>{
+    const auto=sumEdades(v.viaje);
+    const papel=parseInt(v.cortados)||0;
+    let ctlCortados;
+    if(auto>0 && papel>0 && auto!==papel){
+      ctlCortados=`<span style="font-weight:700">${auto}</span> <small class="dato">(suma edades)</small><br><span style="color:var(--error);font-size:11px;font-weight:700">⚠ el formato dice ${papel}: revisa el detalle por edad</span>`;
+    } else if(auto>0){
+      ctlCortados=`<span style="font-weight:700">${auto}</span> <small class="dato">(auto por edades)</small>`;
+    } else {
+      ctlCortados=`<input type="number" value="${v.cortados}" style="width:90px" oninput="viajes[${ix}].cortados=this.value;pintarTotViajes()">`;
+    }
     tb.insertAdjacentHTML("beforeend",`<tr>
-      <td style="padding:4px 10px"><input type="number" value="${v.viaje}" style="width:60px" oninput="viajes[${ix}].viaje=this.value"></td>
+      <td style="padding:4px 10px"><input type="number" value="${v.viaje}" style="width:60px" oninput="viajes[${ix}].viaje=this.value;pintarViajes()"></td>
       <td style="padding:2px"><select onchange="viajes[${ix}].lote_id=this.value"><option value="">— lote —</option>${lotes.map(l=>`<option value="${l.id}" ${String(l.id)===String(v.lote_id)?"selected":""}>${escapar(l.nombre)}</option>`).join("")}</select></td>
-      <td style="padding:2px"><input type="number" value="${v.cortados}" style="width:90px" oninput="viajes[${ix}].cortados=this.value;pintarTotViajes()"></td>
+      <td style="padding:2px">${ctlCortados}</td>
       <td style="padding:2px"><input type="number" value="${v.recusados}" style="width:90px" oninput="viajes[${ix}].recusados=this.value;pintarTotViajes()"></td>
       <td style="padding:4px 10px" id="tv-proc-${ix}">${(parseInt(v.cortados)||0)-(parseInt(v.recusados)||0)}</td>
       <td style="padding:2px"><button class="accion" onclick="viajes.splice(${ix},1);pintarViajes()" style="color:var(--error)">Quitar</button></td>
@@ -413,10 +469,29 @@ function pintarViajes(){
   });
   pintarTotViajes();
 }
+function addViajeEdad(){ viajeEdades.push({viaje:"",edad:"",color:"",cortados:""}); pintarViajeEdades(); }
+function sumEdades(viaje){ return viajeEdades.filter(e=>String(e.viaje)===String(viaje)).reduce((a,e)=>a+(parseInt(e.cortados)||0),0); }
+function pintarViajeEdades(){
+  const tb=document.getElementById("t-vedades"); tb.innerHTML="";
+  if(!viajeEdades.length){ tb.innerHTML='<tr><td colspan="5" style="color:var(--gris);text-align:center;padding:12px">Sin detalle por edad (se llena con "Extraer F.A. 14" o a mano).</td></tr>'; pintarViajes(); return; }
+  viajeEdades.forEach((e,ix)=>{
+    tb.insertAdjacentHTML("beforeend",`<tr>
+      <td style="padding:2px"><input type="number" value="${e.viaje}" style="width:60px" oninput="viajeEdades[${ix}].viaje=this.value;pintarViajes()"></td>
+      <td style="padding:2px"><input type="number" value="${e.edad}" style="width:70px" oninput="viajeEdades[${ix}].edad=this.value"></td>
+      <td style="padding:2px"><input type="text" value="${escapar(e.color)}" placeholder="Negra / Verde / Azul…" style="width:130px" oninput="viajeEdades[${ix}].color=this.value"></td>
+      <td style="padding:2px"><input type="number" value="${e.cortados}" style="width:90px" oninput="viajeEdades[${ix}].cortados=this.value;pintarViajes()"></td>
+      <td style="padding:2px"><button class="accion" onclick="viajeEdades.splice(${ix},1);pintarViajeEdades()" style="color:var(--error)">Quitar</button></td>
+    </tr>`);
+  });
+  pintarViajes();
+}
 function pintarTotViajes(){
   let c=0,r=0;
-  viajes.forEach((v,ix)=>{ c+=parseInt(v.cortados)||0; r+=parseInt(v.recusados)||0;
-    const el=document.getElementById("tv-proc-"+ix); if(el) el.textContent=(parseInt(v.cortados)||0)-(parseInt(v.recusados)||0); });
+  viajes.forEach((v,ix)=>{
+    const auto=sumEdades(v.viaje);
+    const cor=auto>0?auto:(parseInt(v.cortados)||0);
+    c+=cor; r+=parseInt(v.recusados)||0;
+    const el=document.getElementById("tv-proc-"+ix); if(el) el.textContent=cor-(parseInt(v.recusados)||0); });
   document.getElementById("tv-cort").textContent=c.toLocaleString('es-CO');
   document.getElementById("tv-rec").textContent=r.toLocaleString('es-CO');
   document.getElementById("tv-proc").textContent=(c-r).toLocaleString('es-CO');
@@ -485,7 +560,10 @@ async function guardarTodo(){
     racimos_edad:EDADES.map(e=>({edad_semanas:e, color:document.getElementById("ed-color-"+e).value.trim()||null,
         calibre:num("ed-cal-"+e), racimos:num("ed-rac-"+e)})).filter(r=>r.racimos!=null||r.calibre!=null||r.color),
     cajas_rel:cajasrel,
-    viajes:viajes.filter(v=>v.lote_id),
+    viajes:viajes.filter(v=>v.lote_id).map(v=>{
+      const auto=sumEdades(v.viaje);
+      return auto>0?{...v,cortados:auto}:v; }),
+    viaje_edades:viajeEdades.filter(e=>e.viaje&&parseInt(e.cortados)>0),
     muestreo:muestreo.filter(m=>m.lote_id),
     rechazados:rechazados.filter(r=>r.lote_id),
     manifiesto:{ no:document.getElementById("m-no").value.trim()||null,
@@ -502,11 +580,24 @@ async function guardarTodo(){
   corteActualId=d.id;
   document.querySelectorAll('button[onclick="guardarTodo()"]').forEach(b2=>b2.textContent="Actualizar corte");
   av.className="aviso"; av.style.display="block"; av.style.color="var(--verde)";
-  av.textContent=`Corte ${codigo} ${corteActualId?"actualizado":"guardado"} (semana ${d.semana}). Puedes seguir completándolo y volver a dar Actualizar, o abrir otro desde "Cortes registrados".`;
+  av.textContent=`Corte ${codigo} ${corteActualId?"actualizado":"guardado"} (semana ${d.semana}). Preparando formulario en blanco para el siguiente…`;
   cargarCortes();
-  window.scrollTo(0,0);
+  setTimeout(()=>nuevoCorte(), 1200);
 }
 // ---- lista ----
+function proyVsReal(c){
+  const cajas=Number(c.cajas_embarcadas)||0;
+  if(!cajas) return '<small class="dato">—</small>';
+  const proy=c.ingreso_proyectado?Math.round(c.ingreso_proyectado/cajas):null;
+  let h=`<small class="dato">proy ${proy?"$"+proy.toLocaleString('es-CO')+"/caja":"—"}</small>`;
+  if(Number(c.n_liq)>0&&c.ingreso_real>0){
+    const real=Math.round(c.ingreso_real/cajas);
+    const dif=proy?(real-proy)/proy*100:0;
+    const alarma=proy&&Math.abs(dif)>5;
+    h+=`<br><span style="${alarma?'color:var(--error);font-weight:700':'color:var(--verde)'}">real $${real.toLocaleString('es-CO')}${proy?` (${dif>0?"+":""}${Math.round(dif)}%)`:""}</span>${alarma?' ⚠':''}`;
+  }
+  return h;
+}
 async function cargarCortes(){
   const r=await fetch("/api/cortes"); if(!r.ok) return;
   const d=await r.json();
@@ -520,6 +611,7 @@ async function cargarCortes(){
       <td class="num">${c.tot_recusados!=null?Number(c.tot_recusados).toLocaleString('es-CO'):"—"}</td>
       <td class="num">${c.tot_procesados!=null?Number(c.tot_procesados).toLocaleString('es-CO'):"—"}</td>
       <td class="num">${c.cajas_embarcadas!=null?Number(c.cajas_embarcadas).toLocaleString('es-CO'):"—"}</td>
+      <td style="font-size:12px">${proyVsReal(c)}</td>
       <td><button class="accion" onclick="cargarCorte(${c.id})">Abrir</button>${puedeBorrar?` <button class="accion" onclick="borrarCorte(${c.id},'${escapar(c.codigo)}')" style="color:var(--error)">Borrar</button>`:""}</td>
     </tr>`);
   });
@@ -618,12 +710,175 @@ async function cargarCorte(id){
   setv("m-ss",c.sello_salida); setv("m-placa",c.placa);
   rechazados=(d.rechazados||[]).map(r=>({lote_id:r.lote_id,edad:r.edad==null?"":r.edad,mano:r.mano==null?"":r.mano,calibre:r.calibre==null?"":r.calibre,defecto:r.defecto||""}));
   pallets=(d.manifiesto||[]).map(p=>({pallet:p.pallet||"",dsn:p.dsn||"",producto:p.producto||"",cajas:p.cajas==null?"":p.cajas}));
+  viajeEdades=(d.viaje_edades||[]).map(e=>({viaje:e.viaje??"",edad:e.edad_semanas??"",color:e.color||"",cortados:e.cortados??""}));
+  pintarViajeEdades();
   pintarCajasRel(); pintarViajes(); pintarMuestreo(); pintarSuma(); pintarRechazados(); pintarPallets();
   document.querySelectorAll('button[onclick="guardarTodo()"]').forEach(b2=>b2.textContent="Actualizar corte");
   verTab("informe");
   window.scrollTo(0,0);
 }
 function nuevoCorte(){ location.reload(); }
+// ---- Extraccion IA del F.A. 16 ----
+function fileB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});}
+async function extraerCorte(){
+  const info=document.getElementById("cx-info");
+  const files=document.getElementById("cx-pdf").files;
+  if(!files.length){ info.textContent="Elige primero el PDF o imagen."; return; }
+  document.getElementById("cx-btn").disabled=true;
+  info.textContent="Leyendo formato con IA…";
+  try{
+    const imagenes=await imgsDesdeFiles(files);
+    const d=await llamarExtraer("corte",imagenes);
+    if(d.error){ info.textContent=d.error+(d.raw?("\n\n=== TEXTO CRUDO DE LA IA ===\n"+d.raw):""); document.getElementById("cx-btn").disabled=false; return; }
+    if(!d.datos){ info.textContent="La IA no devolvió datos legibles. Digita manualmente."; document.getElementById("cx-btn").disabled=false; return; }
+    prefillCorte(d.datos);
+    info.style.color="var(--verde)";
+    info.textContent="Extraído con "+d.modelo+". REVISA cada valor contra el papel antes de guardar.";
+  }catch(e){ info.textContent="Error: "+String(e).slice(0,150); }
+  document.getElementById("cx-btn").disabled=false;
+}
+// ---- Extraccion generica para FA14 / FA20 / FAG005 ----
+async function imgsDesdeFiles(files){
+  const imagenes=[];
+  for(const f of files){
+    if(f.type.startsWith("image/")){ imagenes.push(await fileB64(f)); }
+    else{
+      const buf=await f.arrayBuffer();
+      const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+      for(let p=1;p<=Math.min(pdf.numPages,6);p++){
+        const page=await pdf.getPage(p);
+        const vp=page.getViewport({scale:1.6});
+        const cv=document.createElement("canvas"); cv.width=vp.width; cv.height=vp.height;
+        await page.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
+        imagenes.push(cv.toDataURL("image/jpeg",0.85));
+      }
+    }
+  }
+  return imagenes;
+}
+async function llamarExtraer(tipo,imagenes){
+  const r=await fetch("/api/extraer",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({tipo,imagenes})});
+  const d=await r.json();
+  if(!r.ok) return {error:d.error||("Error en la extracción ("+r.status+")")};
+  return d;
+}
+function matchLote(nombre){
+  if(nombre==null||nombre==="") return "";
+  const norm=s=>String(s).toLowerCase().replace(/^\s*lote\s*/,"").replace(/[^a-z0-9]/g,"").replace(/^0+(?=\d)/,"");
+  const t=norm(nombre);
+  if(!t) return "";
+  // 1) coincidencia exacta normalizada
+  let hit=lotes.find(l=>norm(l.nombre)===t);
+  // 2) igualdad numerica (evita confundir 7 con 17)
+  if(!hit && /^\d+$/.test(t)) hit=lotes.find(l=>{ const n=norm(l.nombre); return /^\d+$/.test(n)&&parseInt(n,10)===parseInt(t,10); });
+  // 3) contiene (solo si el texto tiene 2+ caracteres, para no cruzar 7->17)
+  if(!hit && t.length>=2) hit=lotes.find(l=>{ const n=norm(l.nombre); return n.includes(t)||t.includes(n); });
+  return hit?hit.id:"";
+}
+async function extraerFA(inputId, btnId, infoId, tipo, prefill){
+  const info=document.getElementById(infoId);
+  const files=document.getElementById(inputId).files;
+  if(!files.length){ info.textContent="Elige primero el archivo."; return; }
+  document.getElementById(btnId).disabled=true;
+  info.style.color=""; info.textContent="Leyendo formato con IA…";
+  try{
+    const imagenes=await imgsDesdeFiles(files);
+    const d=await llamarExtraer(tipo,imagenes);
+    if(d.error){ info.textContent=d.error+(d.raw?('\n\n=== TEXTO CRUDO DE LA IA ===\n'+d.raw):''); document.getElementById(btnId).disabled=false; return; }
+    if(!d.datos){ info.textContent="La IA no devolvió datos legibles. Digita manualmente."; document.getElementById(btnId).disabled=false; return; }
+    prefill(d.datos);
+    info.style.color="var(--verde)";
+    info.textContent="Extraído con "+d.modelo+". REVISA antes de guardar. Si el mismo formato vino 2 veces, extrae el segundo y las líneas se AGREGAN.";
+  }catch(e){ info.textContent="Error: "+String(e).slice(0,150); }
+  document.getElementById(btnId).disabled=false;
+}
+function prefillFa14(x){
+  if(Array.isArray(x.viajes)){
+    viajes=x.viajes.map((v,i)=>({viaje:v.viaje||i+1, lote_id:matchLote(v.lote),
+      cortados:v.cortados??"", recusados:v.recusados??""}));
+    pintarViajes();
+  }
+  if(Array.isArray(x.viaje_edades)){
+    viajeEdades=x.viaje_edades.map(e=>({viaje:e.viaje??"",edad:e.edad??"",color:e.color||"",cortados:e.cortados??""}));
+    pintarViajeEdades();
+  }
+}
+function prefillFa14M(x){
+  if(Array.isArray(x.muestreo)){
+    x.muestreo.forEach(m=>{
+      let peso=m.peso??"", calibre=m.calibre??"", l2=m.largo_2da??"", lu=m.largo_ultima??"", nm=m.n_manos??"";
+      if(peso!=="" && calibre==="" && parseFloat(peso)>=35 && parseFloat(peso)<=50){ calibre=peso; peso=""; }
+      muestreo.push({lote_id:matchLote(m.lote),edad:m.edad??"",peso:peso,calibre:calibre,largo_2da:l2,largo_ultima:lu,n_manos:nm,calidad:m.calidad??"",defecto:m.defecto||""});
+    });
+    pintarMuestreo();
+  }
+}
+// F.A.14 en DOS pasadas: viajes+edades, luego muestreo (evita JSON truncado)
+async function extraerFA14(){
+  const info=document.getElementById("fa14-info");
+  const files=document.getElementById("fa14-pdf").files;
+  if(!files.length){ info.textContent="Elige primero el archivo."; return; }
+  document.getElementById("fa14-btn").disabled=true;
+  info.style.color=""; info.textContent="Leyendo viajes y edades (pasada 1 de 2)…";
+  try{
+    const imagenes=await imgsDesdeFiles(files);
+    const d1=await llamarExtraer("fa14",imagenes);
+    if(d1.error){ info.textContent=d1.error+(d1.raw?("\n\n=== TEXTO CRUDO ===\n"+d1.raw):""); document.getElementById("fa14-btn").disabled=false; return; }
+    if(d1.datos) prefillFa14(d1.datos);
+    info.textContent="Leyendo muestreo (pasada 2 de 2)…";
+    const d2=await llamarExtraer("fa14m",imagenes);
+    if(d2.error){ info.textContent="Viajes OK. Muestreo falló: "+d2.error+(d2.raw?("\n\n=== TEXTO CRUDO ===\n"+d2.raw):""); document.getElementById("fa14-btn").disabled=false; return; }
+    if(d2.datos) prefillFa14M(d2.datos);
+    info.style.color="var(--verde)";
+    info.textContent="Extraído en 2 pasadas (viajes+edades y muestreo). REVISA antes de guardar.";
+  }catch(e){ info.textContent="Error: "+String(e).slice(0,150); }
+  document.getElementById("fa14-btn").disabled=false;
+}
+function prefillFa20(x){
+  if(Array.isArray(x.rechazados)){
+    x.rechazados.forEach(r2=>rechazados.push({lote_id:matchLote(r2.lote),edad:r2.edad??"",mano:r2.mano??"",calibre:r2.calibre??"",defecto:r2.defecto||""}));
+    pintarRechazados(); pintarGraficaDefectos();
+  }
+}
+function prefillFag005(x){
+  pv("m-no",x.manifiesto_no); pv("m-cont",x.contenedor);
+  pv("m-se",x.sello_entrada); pv("m-ss",x.sello_salida); pv("m-placa",x.placa);
+  if(Array.isArray(x.pallets)){
+    x.pallets.forEach(p2=>{ if(p2.cajas||p2.dsn) pallets.push({pallet:p2.pallet||"",dsn:p2.dsn||"",producto:p2.producto||"",cajas:p2.cajas??""}); });
+    pintarPallets();
+  }
+}
+function pv(id,v){ const el=document.getElementById(id); if(el&&v!=null&&v!=="") el.value=v; }
+function prefillCorte(x){
+  pv("f-codigo",x.codigo); pv("f-fecha",x.fecha); pv("f-finca",x.finca); pv("f-destino",x.destino);
+  pv("f-codfinca",x.cod_finca); pv("f-pdo",x.pdo); pv("f-inspector",x.inspector);
+  if(x.fecha) alCambiarFecha();
+  const map={"d-area":"area_recorrida","d-pctrec":"pct_recusados","d-ratioc":"ratio_cortado","d-ratiop":"ratio_procesado",
+    "d-peso":"peso_prom","d-calib":"calibracion_prom","d-manos":"manos_prom","d-l2":"largo_2da_mano","d-lu":"largo_ult_mano",
+    "d-mc":"merma_cortada","d-mp":"merma_procesada","d-dedos":"dedos_caja","d-p18":"prod_dole18","d-p13":"prod_13kg",
+    "d-psingle":"prod_single","d-potras":"prod_otras","d-crec":"cajas_recusadas","d-cemb":"cajas_embarcadas","d-cplanta":"cajas_plantas",
+    "p-campo":"hombres_campo","p-planta":"hombres_planta","p-empaca":"hombres_empacando"};
+  for(const [id,k] of Object.entries(map)) pv(id,x[k]);
+  pintarSuma();
+  if(Array.isArray(x.racimos_edad)){
+    pintarEdades();
+    x.racimos_edad.forEach(re=>{ pv("ed-color-"+re.edad_semanas, re.color); pv("ed-cal-"+re.edad_semanas, re.calibre); pv("ed-rac-"+re.edad_semanas, re.racimos); });
+    pintarTotEdad();
+  }
+  if(Array.isArray(x.viajes)){
+    viajes=x.viajes.map((v,i)=>({viaje:v.viaje||i+1, lote_id:matchLote(v.lote),
+      cortados:v.cortados??"", recusados:v.recusados??""}));
+    pintarViajes();
+  }
+  if(Array.isArray(x.rel_cajas)){
+    cajasrel=x.rel_cajas.map(rc=>({finca:"Siria #1", p_camion:"", contenedor:rc.contenedor||"", sello:rc.sello||"", cajas:rc.cajas??""}));
+    pintarCajasRel();
+  }
+  if(x.observaciones) document.getElementById("x-obs").value=x.observaciones;
+  pintarEmbarque();
+  window.scrollTo(0,0);
+}
 async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
 function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 init();

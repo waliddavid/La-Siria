@@ -80,6 +80,9 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
 .submenu a{display:block;padding:8px 12px;border-radius:6px;color:#2c4a33;font-size:13px;white-space:nowrap}
 .submenu a:hover{background:#eef4ee;color:#1d3a24}
 .submenu a.activo{background:var(--verde);color:#fff;font-weight:700}
+.btn-ia{background:#7c3aed;color:#fff;border:none;font-weight:600}
+.btn-ia:hover{background:#6d28d9}
+.btn-ia:disabled{opacity:.55}
 </style>
 </head>
 <body>
@@ -95,9 +98,8 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
     <span class="grupo-titulo">Operaciones</span>
     <div class="submenu">
       <a href="/dashboard.html">Dashboard</a>
-      <a href="/reporte.html" class="activo">Reporte</a>
+      <a href="/reporte.html">Reporte</a>
       <a href="/corte.html">Corte</a>
-      <a href="/costos.html">Costos</a>
     </div>
   </div>
   <div class="grupo">
@@ -107,6 +109,12 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
       <a href="/asignacion.html">Asignación Coordinadores</a>
       <a href="/labores.html">Labores</a>
       <a href="/deberser.html">Deber ser</a>
+    </div>
+  </div>
+  <div class="grupo">
+    <span class="grupo-titulo">Contabilidad</span>
+    <div class="submenu">
+      <a href="/costos.html" class="activo">Costos</a>
     </div>
   </div>
   <div class="grupo">
@@ -154,10 +162,19 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
       <button class="tab activa" data-p="liq" onclick="verTab('liq')">Liquidaciones</button>
       <button class="tab" data-p="fac" onclick="verTab('fac')">Facturas de compra</button>
       <button class="tab" data-p="gas" onclick="verTab('gas')">Gastos del mes</button>
+      <button class="tab" data-p="desv" onclick="verTab('desv')">Estándares y desviaciones</button>
     </div>
 
     <!-- PANEL COSTO DE LA CAJA (resumen siempre visible arriba) -->
-    <div class="tabla-caja" style="padding:16px 18px;margin-bottom:18px" id="caja-resumen">Cargando costo de la caja…</div>
+    <div class="tabla-caja" style="padding:16px 18px;margin-bottom:18px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <b style="color:var(--verde-hondo)">COSTO DE LA CAJA</b>
+        <small class="dato">semana del año:</small>
+        <input type="number" id="cc-semana" min="1" max="53" style="width:80px">
+        <button class="btn-sec" onclick="cargarResumen()">↻ Calcular</button>
+      </div>
+      <div id="caja-resumen">Cargando…</div>
+    </div>
 
     <!-- LIQUIDACIONES -->
     <div class="panel activo" id="p-liq">
@@ -204,7 +221,7 @@ nav.menu{display:flex;gap:2px;align-items:flex-start}
         <div id="aviso-doc" class="aviso"></div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
           <input type="file" id="md-pdf" accept="application/pdf,image/*" multiple>
-          <button class="btn-sec" id="md-extraer" onclick="extraerPDF()">✨ Extraer con IA</button>
+          <button class="btn-ia" id="md-extraer" onclick="extraerPDF()">✨ Extraer con IA</button>
           <small class="dato" id="md-ext-info"></small>
         </div>
         <div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));display:grid;gap:8px">
@@ -285,6 +302,16 @@ async function init(){
   const hoy=new Date();
   document.getElementById("g-anio").value=hoy.getFullYear();
   document.getElementById("g-mes").value=hoy.getMonth()+1;
+  try{ const rl=await fetch("/api/labores"); if(rl.ok){ const d=await rl.json();
+    document.getElementById("e-labor").innerHTML=(d.labores||[]).filter(l=>l.activo!==0).map(l=>`<option value="${l.id}">${escapar(l.nombre)}</option>`).join(""); } }catch(e){}
+  try{ const rm=await fetch("/api/materiales"); if(rm.ok){ const d=await rm.json();
+    document.getElementById("e-material").innerHTML=(d.materiales||[]).filter(m=>m.activo!==0).map(m=>`<option value="${m.id}">${escapar((m.codigo?m.codigo+" · ":"")+m.nombre)}</option>`).join(""); } }catch(e){}
+  // semana ISO actual como default
+  const wHoy=new Date();
+  const wEne4=new Date(wHoy.getFullYear(),0,4); const wDow1=(wEne4.getDay()+6)%7;
+  const wLunes1=new Date(wEne4); wLunes1.setDate(wEne4.getDate()-wDow1);
+  const semanaActual=1+Math.floor((wHoy-wLunes1)/(7*86400000));
+  document.getElementById("cc-semana").value=semanaActual;
   await cargarResumen();
   await cargarLiqs(); await cargarFacs(); await cargarGastos();
 }
@@ -297,13 +324,22 @@ function verTab(p){
 // ---------- resumen costo de la caja ----------
 async function cargarResumen(){
   try{
-    const r=await fetch("/api/costo-caja"); const d=await r.json();
+    const w=parseInt(document.getElementById("cc-semana").value,10);
+    let f="";
+    if(w>=1&&w<=53){
+      const cEne4=new Date(new Date().getFullYear(),0,4);
+      const cDow1=(cEne4.getDay()+6)%7;
+      const cLunes1=new Date(cEne4); cLunes1.setDate(cEne4.getDate()-cDow1);
+      const cLunes=new Date(cLunes1); cLunes.setDate(cLunes1.getDate()+(w-1)*7);
+      f=cLunes.toISOString().slice(0,10);
+    }
+    const r=await fetch("/api/costo-caja"+(f?("?fecha="+f):"")); const d=await r.json();
     const el=document.getElementById("caja-resumen");
     if(!r.ok){ el.textContent="Costo de la caja: "+(d.error||"sin datos"); return; }
     const peOk=d.punto_equilibrio_ha_sem!=null&&d.produccion_ha_sem>=d.punto_equilibrio_ha_sem;
     const fmt=n=>n!=null?Number(n).toLocaleString('es-CO'):"—";
     el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;font-size:13px;align-items:center">
-      <div><small class="dato">Semana ${d.semana.numero} (${d.semana.inicio} → ${d.semana.fin})</small><br>
+      <div><small class="dato">Semana ${d.semana.numero} · ${d.semana.inicio} → ${d.semana.fin}${d.semifijo_ajustado!=null&&d.semifijo_mes>d.semifijo_ajustado?` · ha activas ${Math.round(d.ha_ratio*100)}%`:""}</small><br>
         <b style="font-size:17px;color:var(--verde-hondo)">COSTO DE LA CAJA</b><br>
         <span style="font-size:22px;font-weight:800">$${fmt(d.costo_caja)}</span></div>
       <div><small class="dato">Producción</small><br><b>${fmt(d.cajas)}</b> cajas<br><small class="dato">${d.produccion_ha_sem} cajas/ha-sem</small></div>
@@ -598,6 +634,49 @@ async function guardarConcepto(){
       grupo:document.getElementById("c-grupo").value,es_variable:document.getElementById("c-var").checked})});
   if(!r.ok){ const d=await r.json(); document.getElementById("aviso-conc").className="aviso error"; document.getElementById("aviso-conc").textContent=d.error||"Error"; return; }
   cerrarConcepto(); location.reload();
+}
+function badgeDesv(d){
+  if(!d.alerta) return '<span style="color:var(--verde);font-size:11px;font-weight:700">OK</span>';
+  return `<span style="color:${d.desviacion_pct>0?'var(--error)':'var(--ambar)'};font-size:11px;font-weight:700">${d.desviacion_pct>0?'▲ EXCESO':'▼ BAJO'} ${Math.abs(d.desviacion_pct)}%</span>`;
+}
+async function cargarDesviaciones(){
+  const r=await fetch("/api/desviaciones"); const d=await r.json();
+  const tb=document.getElementById("t-desv"); tb.innerHTML="";
+  if(!r.ok){ tb.innerHTML=`<tr><td colspan="7" style="color:var(--error);padding:14px">${escapar(d.error||"Error")}</td></tr>`; return; }
+  const filas=[...(d.materiales||[]),...(d.rendimiento||[]),...(d.precios||[])];
+  document.getElementById("d-resumen").innerHTML=`<small class="dato">Semana ${d.semana.inicio} → ${d.semana.fin} · tolerancia ${d.tolerancia}% · ${filas.filter(f=>f.alerta).length} alerta(s)</small>`;
+  if(!filas.length){ tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--gris);padding:14px">Sin datos de la semana (reportes de labores y salidas de almacén).</td></tr>'; return; }
+  filas.sort((a,b)=>(Math.abs(b.desviacion_pct)-Math.abs(a.desviacion_pct))).forEach(f=>{
+    tb.insertAdjacentHTML("beforeend",`<tr>
+      <td style="padding:5px 10px"><small class="dato">${f.tipo.toUpperCase()}</small></td>
+      <td>${escapar(f.labor||"—")}</td><td>${escapar(f.concepto)}</td>
+      <td class="num">${Number(f.esperado).toLocaleString('es-CO')} ${f.unidad||""}</td>
+      <td class="num">${Number(f.real).toLocaleString('es-CO')} ${f.unidad||""}</td>
+      <td class="num">${f.desviacion_pct>0?"+":""}${f.desviacion_pct}%</td>
+      <td>${badgeDesv(f)}</td></tr>`);
+  });
+}
+async function cargarEstandares(){
+  const r=await fetch("/api/estandares"); if(!r.ok) return;
+  const d=await r.json(); const tb=document.getElementById("t-est"); tb.innerHTML="";
+  if(!(d.estandares||[]).length){ tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--gris);padding:14px">Sin materiales asociados a labores. Asócialos en la página Labores.</td></tr>'; return; }
+  d.estandares.forEach(e=>{
+    tb.insertAdjacentHTML("beforeend",`<tr>
+      <td>${escapar(e.labor)}</td><td>${escapar((e.codigo?e.codigo+" · ":"")+e.material)}</td>
+      <td style="padding:2px"><input type="number" step="0.001" id="est-${e.labor_id}-${e.material_id}" value="${e.cantidad_std??""}" style="width:110px" ${puedeEditar?"":"disabled"}> <small class="dato">${escapar(e.unidad||"")} por ${escapar(e.unidad_rendimiento||"unidad")}</small></td>
+      <td>${puedeEditar?`<button class="accion" onclick="guardarEstandar(${e.labor_id},${e.material_id})">Guardar</button>`:""}</td></tr>`);
+  });
+}
+async function guardarEstandar(lid,mid){
+  const elId=lid?("est-"+lid+"-"+mid):null;
+  const cant=elId?document.getElementById(elId).value:document.getElementById("e-cant").value;
+  const r=await fetch("/api/estandares",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({labor_id:lid||parseInt(document.getElementById("e-labor").value),
+      material_id:mid||parseInt(document.getElementById("e-material").value),
+      cantidad_std:cant===""?null:parseFloat(cant)})});
+  const d=await r.json();
+  if(!r.ok){ alert(d.error||"No se pudo guardar."); return; }
+  cargarEstandares(); cargarDesviaciones();
 }
 async function salir(){ await fetch("/api/logout",{method:"POST"}); window.location.href="/"; }
 function escapar(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}

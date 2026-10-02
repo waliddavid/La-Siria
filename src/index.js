@@ -108,6 +108,15 @@ async function cerrarCruceSalida(env, { fecha, trabajador_id, labor_id, lote_id 
   for (const s of salidas.results) await resolverPendientesRef(env, "salida_sin_actividad", s.id);
 }
 
+async function ingresoCajaRef(env) {
+  const liq = await env.DB.prepare(
+    `SELECT l.id, COALESCE(SUM(x.cantidad),0) AS cajas, COALESCE(SUM(x.total_linea),0) AS total
+     FROM liquidaciones l JOIN liquidacion_lineas x ON x.liquidacion_id = l.id
+     WHERE l.estado='aprobada' GROUP BY l.id ORDER BY l.fecha DESC, l.id DESC LIMIT 1`
+  ).first();
+  return (liq && liq.cajas > 0) ? Math.round(liq.total / liq.cajas) : null;
+}
+
 async function crearPendiente(env, { tipo, titulo, detalle, origen, ref_tabla, ref_id, usuario_id, rol, grupo }) {
   if (ref_tabla && ref_id != null) {
     const existe = await env.DB.prepare(
@@ -2909,6 +2918,12 @@ async function handleApi(req, env, path) {
       await env.DB.prepare("INSERT INTO inspeccion_viajes (corte_id, viaje, lote_id, cortados, recusados, procesados) VALUES (?,?,?,?,?,?)")
         .bind(cid, v.viaje || null, v.lote_id, cor, rec, cor - rec).run();
     }
+    if (Array.isArray(b.viaje_edades)) for (const e of b.viaje_edades) {
+      if (!e.viaje || !(parseInt(e.cortados) > 0)) continue;
+      await env.DB.prepare("INSERT INTO inspeccion_viaje_edades (corte_id, viaje, lote_id, edad_semanas, color, cortados, recusados) VALUES (?,?,?,?,?,?,?)")
+        .bind(cid, e.viaje, e.lote_id || null, e.edad_semanas ?? null, e.color || null,
+              parseInt(e.cortados) || 0, e.recusados ?? null).run();
+    }
     if (Array.isArray(b.muestreo)) for (const m of b.muestreo) {
       if (!m.lote_id) continue;
       await env.DB.prepare("INSERT INTO inspeccion_muestreo (corte_id, lote_id, edad, peso, calibre, largo_2da, largo_ultima, n_manos, calidad, defecto) VALUES (?,?,?,?,?,?,?,?,?,?)")
@@ -2924,6 +2939,12 @@ async function handleApi(req, env, path) {
       if (!p.cajas && !p.dsn) continue;
       await env.DB.prepare("INSERT INTO corte_manifiesto (corte_id, pallet, dsn, producto, cajas) VALUES (?,?,?,?,?)")
         .bind(cid, p.pallet || null, p.dsn || null, p.producto || null, p.cajas ?? null).run();
+    }
+    // 8K: ingreso proyectado del corte (cajas x precio/caja de la ultima liquidacion aprobada)
+    const precioRef = await ingresoCajaRef(env);
+    const cajasProy = (cajasEmb > 0) ? cajasEmb : (tp || 0);
+    if (precioRef && cajasProy > 0) {
+      await env.DB.prepare("UPDATE cortes SET ingreso_proyectado=? WHERE id=?").bind(Math.round(cajasProy * precioRef), cid).run();
     }
     await audit(env, user.id, "crear", "cortes", cid, null, { codigo: b.codigo });
     return json({ ok: true, id: cid, semana });
@@ -2974,7 +2995,7 @@ async function handleApi(req, env, path) {
           (b.manifiesto && b.manifiesto.sello_entrada) || null, (b.manifiesto && b.manifiesto.sello_salida) || null,
           (b.manifiesto && b.manifiesto.placa) || null,
           tc, tr, tp, cid).run();
-    for (const t of ["corte_racimos_edad", "corte_cajas_rel", "inspeccion_viajes", "inspeccion_muestreo", "corte_rechazados", "corte_manifiesto"])
+    for (const t of ["corte_racimos_edad", "corte_cajas_rel", "inspeccion_viajes", "inspeccion_muestreo", "corte_rechazados", "corte_manifiesto", "inspeccion_viaje_edades"])
       await env.DB.prepare(`DELETE FROM ${t} WHERE corte_id=?`).bind(cid).run();
     if (Array.isArray(b.racimos_edad)) for (const r of b.racimos_edad) {
       if (!r.edad_semanas) continue;
@@ -2992,6 +3013,12 @@ async function handleApi(req, env, path) {
       await env.DB.prepare("INSERT INTO inspeccion_viajes (corte_id, viaje, lote_id, cortados, recusados, procesados) VALUES (?,?,?,?,?,?)")
         .bind(cid, v.viaje || null, v.lote_id, cor, rec, cor - rec).run();
     }
+    if (Array.isArray(b.viaje_edades)) for (const e of b.viaje_edades) {
+      if (!e.viaje || !(parseInt(e.cortados) > 0)) continue;
+      await env.DB.prepare("INSERT INTO inspeccion_viaje_edades (corte_id, viaje, lote_id, edad_semanas, color, cortados, recusados) VALUES (?,?,?,?,?,?,?)")
+        .bind(cid, e.viaje, e.lote_id || null, e.edad_semanas ?? null, e.color || null,
+              parseInt(e.cortados) || 0, e.recusados ?? null).run();
+    }
     if (Array.isArray(b.muestreo)) for (const m of b.muestreo) {
       if (!m.lote_id) continue;
       await env.DB.prepare("INSERT INTO inspeccion_muestreo (corte_id, lote_id, edad, peso, calibre, largo_2da, largo_ultima, n_manos, calidad, defecto) VALUES (?,?,?,?,?,?,?,?,?,?)")
@@ -3008,6 +3035,12 @@ async function handleApi(req, env, path) {
       await env.DB.prepare("INSERT INTO corte_manifiesto (corte_id, pallet, dsn, producto, cajas) VALUES (?,?,?,?,?)")
         .bind(cid, p.pallet || null, p.dsn || null, p.producto || null, p.cajas ?? null).run();
     }
+    // 8K: actualizar proyeccion
+    const precioRef2 = await ingresoCajaRef(env);
+    const cajasProy2 = (cajasEmb > 0) ? cajasEmb : (tp || 0);
+    if (precioRef2 && cajasProy2 > 0) {
+      await env.DB.prepare("UPDATE cortes SET ingreso_proyectado=? WHERE id=?").bind(Math.round(cajasProy2 * precioRef2), cid).run();
+    }
     await audit(env, user.id, "editar", "cortes", cid, null, { codigo: b.codigo });
     return json({ ok: true, id: cid, semana });
   }
@@ -3020,7 +3053,7 @@ async function handleApi(req, env, path) {
     const cid = parseInt(path.split("/")[3]);
     const c0 = await env.DB.prepare("SELECT id, codigo FROM cortes WHERE id=?").bind(cid).first();
     if (!c0) return json({ error: "El corte no existe." }, 404);
-    for (const t of ["corte_racimos_edad", "corte_cajas_rel", "inspeccion_viajes", "inspeccion_muestreo", "corte_rechazados", "corte_manifiesto"])
+    for (const t of ["corte_racimos_edad", "corte_cajas_rel", "inspeccion_viajes", "inspeccion_muestreo", "corte_rechazados", "corte_manifiesto", "inspeccion_viaje_edades"])
       await env.DB.prepare(`DELETE FROM ${t} WHERE corte_id=?`).bind(cid).run();
     await env.DB.prepare("DELETE FROM cortes WHERE id=?").bind(cid).run();
     await audit(env, user.id, "borrar", "cortes", cid, { codigo: c0.codigo }, null);
@@ -3033,8 +3066,16 @@ async function handleApi(req, env, path) {
     if (!user) return json({ error: "No autenticado." }, 401);
     const { results } = await env.DB.prepare(
       `SELECT c.id, c.codigo, c.fecha, c.semana, c.finca, c.destino, c.inspector,
-              c.tot_cortados, c.tot_recusados, c.tot_procesados, c.cajas_embarcadas, c.cerrado
-       FROM cortes c ORDER BY c.fecha DESC, c.id DESC LIMIT 100`
+              c.tot_cortados, c.tot_recusados, c.tot_procesados, c.ingreso_proyectado,
+              CASE WHEN c.cajas_embarcadas IS NOT NULL AND c.cajas_embarcadas > 0
+                   THEN c.cajas_embarcadas
+                   ELSE (SELECT COALESCE(SUM(r.cajas),0) FROM corte_cajas_rel r WHERE r.corte_id = c.id)
+              END AS cajas_embarcadas, c.cerrado,
+              (SELECT COALESCE(SUM(x.total_linea),0) FROM liquidaciones l JOIN liquidacion_lineas x ON x.liquidacion_id=l.id
+                WHERE l.corte_id = c.id AND l.estado='aprobada') AS ingreso_real,
+              (SELECT COUNT(*) FROM liquidaciones l WHERE l.corte_id = c.id AND l.estado='aprobada') AS n_liq
+       FROM cortes c
+       ORDER BY c.fecha DESC, c.id DESC LIMIT 100`
     ).all();
     return json({ cortes: results });
   }
@@ -3051,6 +3092,9 @@ async function handleApi(req, env, path) {
     const vi = await env.DB.prepare(
       `SELECT i.*, l.nombre AS lote FROM inspeccion_viajes i LEFT JOIN lotes l ON l.id=i.lote_id WHERE i.corte_id=? ORDER BY i.viaje`
     ).bind(cid).all();
+    const ve = await env.DB.prepare(
+      `SELECT e.*, l.nombre AS lote FROM inspeccion_viaje_edades e LEFT JOIN lotes l ON l.id=e.lote_id WHERE e.corte_id=? ORDER BY e.viaje, e.edad_semanas`
+    ).bind(cid).all();
     const mu = await env.DB.prepare(
       `SELECT m.*, l.nombre AS lote FROM inspeccion_muestreo m LEFT JOIN lotes l ON l.id=m.lote_id WHERE m.corte_id=? ORDER BY m.id`
     ).bind(cid).all();
@@ -3058,7 +3102,7 @@ async function handleApi(req, env, path) {
       `SELECT r.*, l.nombre AS lote FROM corte_rechazados r LEFT JOIN lotes l ON l.id=r.lote_id WHERE r.corte_id=? ORDER BY r.id`
     ).bind(cid).all();
     const mf = await env.DB.prepare("SELECT * FROM corte_manifiesto WHERE corte_id=? ORDER BY pallet").bind(cid).all();
-    return json({ corte: c, racimos_edad: re_.results, cajas_rel: cr.results, viajes: vi.results, muestreo: mu.results, rechazados: rj.results, manifiesto: mf.results });
+    return json({ corte: c, racimos_edad: re_.results, cajas_rel: cr.results, viajes: vi.results, viaje_edades: ve.results, muestreo: mu.results, rechazados: rj.results, manifiesto: mf.results });
   }
 
   // ==========================================================
@@ -3312,12 +3356,16 @@ async function handleApi(req, env, path) {
     const cajas = prod ? prod.cajas : 0;
     // hectareas cultivadas (version vigente de lotes activos)
     const haQ = await env.DB.prepare(
-      `SELECT COALESCE(SUM(lv.hectareas),0) AS ha FROM lotes l
+      `SELECT COALESCE(SUM(lv.hectareas),0) AS ha,
+              COALESCE(SUM(CASE WHEN COALESCE(l.se_suspende_nino,0)=0 THEN lv.hectareas ELSE 0 END),0) AS ha_activas
+       FROM lotes l
        JOIN lote_versiones lv ON lv.lote_id = l.id AND lv.id = (
          SELECT id FROM lote_versiones WHERE lote_id = l.id ORDER BY vigente_desde DESC, id DESC LIMIT 1)
        WHERE l.activo = 1`
     ).first();
     const ha = haQ && haQ.ha > 0 ? haQ.ha : 75.12;
+    const haActivas = haQ && haQ.ha_activas > 0 ? haQ.ha_activas : ha;
+    const haRatio = ha > 0 ? haActivas / ha : 1;
     // materiales consumidos en la semana (salidas con costo PEPS)
     const mat = await env.DB.prepare(
       "SELECT COALESCE(SUM(costo_total),0) AS v FROM salidas_almacen WHERE fecha BETWEEN ? AND ? AND costo_total IS NOT NULL"
@@ -3330,13 +3378,18 @@ async function handleApi(req, env, path) {
        WHERE r.fecha BETWEEN ? AND ? AND (l.es_variable = 1 OR UPPER(COALESCE(l.categoria_costo,'')) LIKE '%VARIABLE%')`
     ).bind(f1, f2).first();
     const moVariable = moQ ? moQ.v : 0;
-    // gastos fijos del mes prorrateados
+    // gastos del mes prorrateados: FIJO PURO completo + SEMI-FIJO ajustado por ha cultivadas
     const anio = new Date(fecha).getFullYear(), mes = new Date(fecha).getMonth() + 1;
     const gf = await env.DB.prepare(
-      `SELECT COALESCE(SUM(g.valor),0) AS v FROM gastos_mes g JOIN conceptos_costo c ON c.id=g.concepto_id
+      `SELECT COALESCE(SUM(CASE WHEN c.es_semifijo=1 THEN 0 ELSE g.valor END),0) AS fijo_puro,
+              COALESCE(SUM(CASE WHEN c.es_semifijo=1 THEN g.valor ELSE 0 END),0) AS semifijo
+       FROM gastos_mes g JOIN conceptos_costo c ON c.id=g.concepto_id
        WHERE g.anio=? AND g.mes=? AND c.es_variable = 0`
     ).bind(anio, mes).first();
-    const fijosMes = gf ? gf.v : 0;
+    const fijoPuroMes = gf ? gf.fijo_puro : 0;
+    const semifijoMes = gf ? gf.semifijo : 0;
+    const semifijoAjustado = semifijoMes * haRatio;
+    const fijosMes = fijoPuroMes + semifijoAjustado;
     const fijosSemana = fijosMes / 4.33;
     // ingreso por caja: ultima liquidacion aprobada
     const liq = await env.DB.prepare(
@@ -3356,8 +3409,12 @@ async function handleApi(req, env, path) {
     if (ingresoCaja && cvCaja != null && (ingresoCaja - cvCaja) > 0 && ha > 0)
       peHaSem = Math.round((fijosSemana / (ingresoCaja - cvCaja)) / ha * 100) / 100;
     return json({ semana: { inicio: f1, fin: f2, numero: semana },
-      cajas, hectareas: ha, produccion_ha_sem: Math.round(prodHaSem * 100) / 100,
-      fijos_mes: fijosMes, fijos_semana: Math.round(fijosSemana),
+      cajas, hectareas: ha, hectareas_activas: haActivas,
+      produccion_ha_sem: Math.round(prodHaSem * 100) / 100,
+      fijos_mes: Math.round(fijosMes), fijo_puro_mes: Math.round(fijoPuroMes),
+      semifijo_mes: Math.round(semifijoMes), semifijo_ajustado: Math.round(semifijoAjustado),
+      ha_ratio: Math.round(haRatio * 1000) / 1000,
+      fijos_semana: Math.round(fijosSemana),
       materiales_sem: Math.round(materiales), mo_variable_sem: Math.round(moVariable),
       costo_variable_caja: cvCaja != null ? Math.round(cvCaja) : null,
       costo_fijo_ha_sem: Math.round(fijoHaSem),
@@ -3375,15 +3432,52 @@ async function handleApi(req, env, path) {
     const b = await req.json();
     if (!b.tipo || !Array.isArray(b.imagenes) || !b.imagenes.length)
       return json({ error: "Falta el tipo (factura|liquidacion) y las imágenes." }, 400);
-    if (!env.MOONSHOT_API_KEY && !env.OPENAI_API_KEY && !env.ANTHROPIC_API_KEY)
-      return json({ error: "IA no configurada: falta la API key (wrangler secret put)." }, 400);
+    if (!env.MOONSHOT_API_KEY && !env.OPENROUTER_API_KEY && !env.OPENAI_API_KEY)
+      return json({ error: "IA no configurada: falta la API key (wrangler secret put MOONSHOT_API_KEY u OPENROUTER_API_KEY)." }, 400);
     const cfgL = await env.DB.prepare("SELECT valor FROM configuracion WHERE clave='ia_modelo_extraccion'").first();
-    const modelo = (cfgL && cfgL.valor) || "kimi-k2.6";
+    // modelo por tipo de documento (ej: ia_modelo_fa14) con fallback al global
+    const cfgT = await env.DB.prepare("SELECT valor FROM configuracion WHERE clave=?").bind("ia_modelo_" + b.tipo).first();
+    const modelo = (cfgT && cfgT.valor) || (cfgL && cfgL.valor) || "qwen/qwen2.5-vl-72b-instruct";
     let prompt;
     if (b.tipo === "factura") {
       prompt = `Eres un extractor de datos de facturas colombianas de insumos agrícolas (banano). Lee la(s) imagen(es) y devuelve SOLO un JSON válido con esta estructura exacta, sin texto adicional:
 {"proveedor": "...", "numero": "...", "fecha": "YYYY-MM-DD", "lineas": [{"descripcion": "...", "cantidad": 0, "vr_unit": 0, "total": 0}], "subtotal": 0, "iva": 0, "total": 0}
 Reglas: valores numéricos sin símbolos ni separadores de miles; si un dato no se ve, usa null; no inventes valores.`;
+    } else if (b.tipo === "fa14") {
+      prompt = `Eres un extractor del "Reporte de Inspeccion - Racimos" (F.A.14) de una finca bananera. Lee la(s) imagen(es) y devuelve SOLO JSON válido, sin texto adicional:
+{"embarque":"S-02","fecha":"YYYY-MM-DD","inspector":"...","finca":"...",
+"viajes":[{"viaje":1,"lote":"14","recusados":2,"procesados":43}],
+"viaje_edades":[{"viaje":1,"lote":"14","edad":12,"color":"Negra","cortados":21},{"viaje":1,"lote":"14","edad":11,"color":"Verde","cortados":15},{"viaje":1,"lote":"14","edad":10,"color":"Azul","cortados":9}]}
+viaje_edades = UNA FILA POR CADA CRUCE viaje x EDAD: el encabezado marca bloques "EDAD 12 COLOR Negra", "EDAD 11 COLOR Verde", etc.; cada viaje puede tener varias tandas (ej: viaje 1, lote 14: 21 de edad 12 Negra + 15 de edad 11 Verde + 9 de edad 10 Azul). El TOTAL de cortados del viaje (columna TOTAL RACIMOS) va en "viajes" junto con recusados y procesados.
+REGLA CRITICA: la tabla tiene hasta 16 viajes; EXTRAE TODOS los que tengan CUALQUIER dato (numero de viaje, lote o cantidad), aunque la letra sea dudosa. No omitas ninguna fila con datos: da tu mejor lectura. Solo omite una fila si esta completamente vacia. null solo si un campo especifico no se ve; sin explicaciones.`;
+    } else if (b.tipo === "fa14m") {
+      prompt = `Eres un extractor de las tablas "MUESTREO DE RACIMOS" del formato F.A.14 de una finca bananera. Lee la(s) imagen(es) y devuelve SOLO JSON válido, sin texto adicional:
+{"muestreo":[{"lote":"12","edad":11,"peso":null,"calibre":43,"largo_2da":25,"largo_ultima":22,"n_manos":6,"calidad":null,"defecto":null}]}
+COLUMNA POR COLUMNA: Lote | Edad | Peso | Calibr. | Largo 2da Mano | Largo Última Mano | N. MANO | Calidad | Defect.
+REGLAS DE ORO: (1) la columna PESO casi siempre esta VACIA: NO corras los valores; usa null en peso. (2) El primer numero de la fila es el CALIBRE (siempre entre 35 y 50). (3) Los dos siguientes son LARGOS en cm (entre 15 y 30). (4) El ultimo numero es N. MANO (entre 4 y 10). NUNCA pongas el calibre en peso.
+REGLA CRITICA: hay 4 tablas de muestreo con hasta ~30 filas en total; EXTRAE TODAS las filas que tengan al menos el calibre visible, aunque la letra sea dudosa. Da tu mejor lectura; no omitas filas con datos. Sin explicaciones.`;
+    } else if (b.tipo === "fa20") {
+      prompt = `Eres un extractor del "Reporte Racimos Rechazados por Defecto" (F.A.20) de una finca bananera. Lee la(s) imagen(es) y devuelve SOLO JSON válido sin texto adicional:
+{"corte":"S-39","fecha":"YYYY-MM-DD","inspector":"...",
+"rechazados":[{"lote":"1","edad":10,"mano":6,"calibre":42,"defecto":"04"},
+{"lote":"4","edad":11,"mano":5,"calibre":40,"defecto":"01"}]}
+Cada fila de la tabla es un racimo rechazado (pueden venir varias columnas de lotes en la misma hoja: extrae TODAS las filas en orden de izquierda a derecha, de arriba abajo). defecto = codigo de dos digitos (01-16). null si no se ve; no inventes valores.`;
+    } else if (b.tipo === "fag005") {
+      prompt = `Eres un extractor del "Manifiesto de Produccion - Banano" (FAG-005) de Tecbaco. Lee la(s) imagen(es) y devuelve SOLO JSON válido, compacto, sin texto adicional:
+{"manifiesto_no":"5136491","embarque":"S-02","fecha":"YYYY-MM-DD","contenedor":"...",
+"sello_entrada":"290698","sello_salida":"232284","placa":"SWK881",
+"pallets":[{"pallet":1,"dsn":"DSN512924177","cajas":48}]}
+REGLAS: (1) pallets = SOLO numero de pallet, codigo DSN impreso (o el codigo de barras largo entre parentesis) y numero de cajas; NO incluyas cod/prod ni nada escrito a mano junto al sticker (suele estar ilegible). (2) Si la cantidad de cajas de un pallet no se distingue con claridad, usa null en cajas. (3) maximo 22 pallets. (4) null en lo demas que no se vea; no inventes valores; no agregues explicaciones.`;
+    } else if (b.tipo === "corte") {
+      prompt = `Eres un extractor del "Informe General de Corte Diario" (formato F.A.16) de una finca bananera colombiana. Lee la(s) imagen(es) y devuelve SOLO un JSON válido, sin texto adicional, con esta estructura exacta (null en lo que no se vea, números sin símbolos ni puntos de miles, fechas YYYY-MM-DD):
+{"codigo":"S-39","fecha":"YYYY-MM-DD","finca":"Siria #1","destino":"USA","cod_finca":"105","pdo":null,"inspector":"...",
+"area_recorrida":0,"pct_recusados":0,"ratio_cortado":0,"ratio_procesado":0,"peso_prom":0,"calibracion_prom":0,"manos_prom":0,
+"largo_2da_mano":0,"largo_ult_mano":0,"merma_cortada":0,"merma_procesada":0,"dedos_caja":0,
+"prod_dole18":0,"prod_13kg":0,"prod_single":0,"prod_otras":0,"cajas_recusadas":0,"cajas_embarcadas":0,"cajas_plantas":0,
+"hombres_campo":0,"hombres_planta":0,"hombres_empacando":0,"observaciones":"...",
+"racimos_edad":[{"edad_semanas":9,"color":"Negra","calibre":42,"racimos":96}],
+"rel_cajas":[{"contenedor":"33444-7","sello":"SP15G","cajas":240}]}
+Reglas: viajes = filas de la tabla de inspección por viaje (numero, lote, total cortados, total recusados de esa fila); racimos_edad = filas de "RACIMOS CORTADOS" por edad (8 a 13 semanas); rel_cajas = tabla "RELACION DE CAJAS"; no inventes valores.`;
     } else {
       prompt = `Eres un extractor de liquidaciones de banano (embarques Tecbaco/Dole). Lee la(s) imagen(es) y devuelve SOLO un JSON válido con esta estructura exacta, sin texto adicional:
 {"embarque": "...", "fecha": "YYYY-MM-DD", "tasa_cambio": 0, "lineas": [{"tipo_caja": "Dole 18kg|Aldi 13kg|Single|Otro", "cantidad": 0, "precio_unit": 0, "incentivo": 0, "empaque_especial": 0}]}
@@ -3394,37 +3488,173 @@ Los precios van en pesos colombianos por caja; incentivos y empaque especial por
       contenido.push({ type: "image_url", image_url: { url: img } });
     let resp;
     try {
-      if (env.MOONSHOT_API_KEY) {
-        resp = await fetch("https://api.moonshot.ai/v1/chat/completions", {
-          method: "POST",
-          headers: { "Authorization": "Bearer " + env.MOONSHOT_API_KEY, "Content-Type": "application/json" },
-          body: JSON.stringify({ model: modelo, temperature: 0, messages: [{ role: "user", content: contenido }],
-                                 response_format: { type: "json_object" } })
-        });
-      } else if (env.OPENAI_API_KEY) {
-        resp = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Authorization": "Bearer " + env.OPENAI_API_KEY, "Content-Type": "application/json" },
-          body: JSON.stringify({ model: modelo || "gpt-4o-mini", temperature: 0, messages: [{ role: "user", content: contenido }],
-                                 response_format: { type: "json_object" } })
-        });
-      }
+      let baseIa = null, keyIa = null;
+      if (env.MOONSHOT_API_KEY) { baseIa = "https://api.moonshot.ai/v1/chat/completions"; keyIa = env.MOONSHOT_API_KEY; }
+      else if (env.OPENROUTER_API_KEY) { baseIa = "https://openrouter.ai/api/v1/chat/completions"; keyIa = env.OPENROUTER_API_KEY; }
+      else if (env.OPENAI_API_KEY) { baseIa = "https://api.openai.com/v1/chat/completions"; keyIa = env.OPENAI_API_KEY; }
+      resp = await fetch(baseIa, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + keyIa, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: modelo, temperature: 0, max_tokens: 8192,
+                               messages: [{ role: "user", content: contenido }],
+                               response_format: { type: "json_object" },
+                               provider: { require_parameters: true } })
+      });
       if (!resp || !resp.ok) {
         const tx = resp ? await resp.text() : "sin respuesta";
         return json({ error: "Error del proveedor IA: " + tx.slice(0, 300) }, 502);
       }
       const data = await resp.json();
-      const texto = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : "";
+      const ch0 = data.choices && data.choices[0] ? data.choices[0] : null;
+      const finishR = ch0 ? ch0.finish_reason : null;
+      let msg = ch0 ? ch0.message : null;
+      // el contenido puede venir como string o como arreglo de partes
+      let texto = "";
+      if (msg && typeof msg.content === "string") texto = msg.content;
+      else if (msg && Array.isArray(msg.content))
+        texto = msg.content.filter(c => c && (c.type === "text" || c.text)).map(c => c.text || "").join("");
+      else if (msg && msg.reasoning_content) texto = String(msg.reasoning_content);
+      // quitar cercas de markdown si las hay
+      texto = texto.replace(/```json/gi, "").replace(/```/g, "").trim();
       let parsed = null;
       try { parsed = JSON.parse(texto); } catch (e) {
         const m2 = texto.match(/\{[\s\S]*\}/);
         if (m2) { try { parsed = JSON.parse(m2[0]); } catch (e2) {} }
       }
-      await audit(env, user.id, "extraer", "ia", null, null, { tipo: b.tipo, modelo });
+      const razonTxt = (msg && (msg.reasoning_content || (msg.reasoning && msg.reasoning.content))) ? String(msg.reasoning_content || msg.reasoning.content) : "";
+      await audit(env, user.id, "extraer", "ia", null, null, { tipo: b.tipo, modelo, finish: finishR });
+      if (!parsed) {
+        await audit(env, user.id, "ia_fallo", "ia_raw", null, null,
+          { tipo: b.tipo, modelo, finish: finishR,
+            content_len: texto.length, reasoning_len: razonTxt.length,
+            content: texto.slice(0, 1400), reasoning: razonTxt.slice(0, 800) });
+        return json({ ok: false,
+          error: "IA sin JSON parseable. finish=" + finishR +
+                 " | content=" + texto.length + " chars | reasoning=" + razonTxt.length + " chars",
+          raw: (texto || razonTxt).slice(0, 900) }, 502);
+      }
       return json({ ok: true, datos: parsed, modelo });
     } catch (e) {
       return json({ error: "Falló la llamada a la IA: " + String(e).slice(0, 200) }, 502);
     }
+  }
+
+  // ==========================================================
+  // 8H-2: ESTANDARES Y DESVIACIONES (seguimiento diario, manual Banacol)
+  // ==========================================================
+  // lista de materiales tipicos por labor con su cantidad estandar
+  if (path === "/api/estandares" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const { results } = await env.DB.prepare(
+      `SELECT lm.labor_id, lm.material_id, lm.cantidad_std, l.nombre AS labor, l.rendimiento_estandar, l.unidad_rendimiento,
+              m.codigo, m.nombre AS material, m.unidad
+       FROM labor_material lm
+       JOIN labores l ON l.id = lm.labor_id
+       JOIN materiales m ON m.id = lm.material_id
+       ORDER BY l.nombre, m.nombre`
+    ).all();
+    return json({ estandares: results });
+  }
+  // guardar/actualizar cantidad estandar de un material en una labor
+  if (path === "/api/estandares" && req.method === "POST") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    if (user.rol !== "administrador") return json({ error: "Solo el administrador define estándares." }, 403);
+    const b = await req.json();
+    if (!b.labor_id || !b.material_id) return json({ error: "Faltan labor o material." }, 400);
+    const cant = b.cantidad_std === null || b.cantidad_std === "" ? null : parseFloat(b.cantidad_std);
+    const ex = await env.DB.prepare("SELECT rowid FROM labor_material WHERE labor_id=? AND material_id=?").bind(b.labor_id, b.material_id).first();
+    if (ex) await env.DB.prepare("UPDATE labor_material SET cantidad_std=? WHERE labor_id=? AND material_id=?").bind(cant, b.labor_id, b.material_id).run();
+    else await env.DB.prepare("INSERT INTO labor_material (labor_id, material_id, cantidad_std) VALUES (?,?,?)").bind(b.labor_id, b.material_id, cant).run();
+    await audit(env, user.id, "estandar", "labor_material", null, null, b);
+    return json({ ok: true });
+  }
+
+  // desviaciones de la semana: material real vs estandar, rendimiento vs estandar, precio vs bench
+  if (path === "/api/desviaciones" && req.method === "GET") {
+    const user = await currentUser(req, env);
+    if (!user) return json({ error: "No autenticado." }, 401);
+    const sp7 = new URL(req.url).searchParams;
+    const fecha = sp7.get("fecha") || new Date().toISOString().slice(0, 10);
+    const dow = (new Date(fecha + "T00:00:00").getDay() + 6) % 7;
+    const lunes = new Date(fecha); lunes.setDate(lunes.getDate() - dow);
+    const dom = new Date(lunes); dom.setDate(lunes.getDate() + 6);
+    const f1 = lunes.toISOString().slice(0, 10), f2 = dom.toISOString().slice(0, 10);
+    const tolCfg = await env.DB.prepare("SELECT valor FROM configuracion WHERE clave='desviacion_tolerancia_pct'").first();
+    const tol = tolCfg ? (parseFloat(tolCfg.valor) || 15) : 15;
+    // 1) material real vs estandar por labor
+    const stds = await env.DB.prepare(
+      `SELECT lm.labor_id, lm.material_id, lm.cantidad_std, l.nombre AS labor, m.nombre AS material, m.unidad
+       FROM labor_material lm JOIN labores l ON l.id=lm.labor_id JOIN materiales m ON m.id=lm.material_id
+       WHERE lm.cantidad_std IS NOT NULL AND lm.cantidad_std > 0`
+    ).all();
+    const mats = [];
+    for (const s of stds.results) {
+      const act = await env.DB.prepare(
+        "SELECT COALESCE(SUM(cantidad_ejecutada),0) AS n FROM reporte_labores WHERE labor_id=? AND fecha BETWEEN ? AND ?"
+      ).bind(s.labor_id, f1, f2).first();
+      const actividad = act ? act.n : 0;
+      if (actividad <= 0) continue;
+      const esperado = s.cantidad_std * actividad;
+      const real = await env.DB.prepare(
+        "SELECT COALESCE(SUM(cantidad),0) AS n FROM salidas_almacen WHERE labor_id=? AND material_id=? AND fecha BETWEEN ? AND ?"
+      ).bind(s.labor_id, s.material_id, f1, f2).first();
+      const realN = real ? real.n : 0;
+      const desv = esperado > 0 ? Math.round((realN - esperado) / esperado * 1000) / 10 : 0;
+      const item = { tipo: "material", labor: s.labor, concepto: s.material, unidad: s.unidad,
+                     esperado: Math.round(esperado * 100) / 100, real: Math.round(realN * 100) / 100,
+                     desviacion_pct: desv };
+      if (Math.abs(desv) > tol) {
+        item.alerta = true;
+        if (Math.abs(desv) > tol * 2) {
+          await crearPendiente(env, {
+            tipo: "resolver",
+            titulo: `Desviación de material: ${s.material} en ${s.labor}`,
+            detalle: `Semana ${f1}→${f2}: se esperaban ${Math.round(esperado)} ${s.unidad || ""} (estándar ${s.cantidad_std}/unidad × ${actividad} unidades) y salieron ${Math.round(realN)}. Desviación ${desv}%. Revisar dosificación/desperdicio.`,
+            origen: "costos", ref_tabla: "desviacion_material",
+            ref_id: s.labor_id * 100000 + s.material_id, rol: "administrador",
+          });
+        }
+      }
+      mats.push(item);
+    }
+    // 2) rendimiento real vs estandar por labor
+    const rend = [];
+    const labs = await env.DB.prepare(
+      "SELECT id, nombre, rendimiento_estandar, unidad_rendimiento FROM labores WHERE rendimiento_estandar IS NOT NULL AND rendimiento_estandar > 0 AND activo != 0"
+    ).all();
+    for (const l of labs.results) {
+      const r2 = await env.DB.prepare(
+        `SELECT COALESCE(AVG(r.cantidad_ejecutada),0) AS prom
+         FROM reporte_labores r WHERE r.labor_id=? AND r.fecha BETWEEN ? AND ? AND r.cantidad_ejecutada > 0`
+      ).bind(l.id, f1, f2).first();
+      const prom = r2 ? r2.prom : 0;
+      if (prom <= 0) continue;
+      const desv = Math.round((prom - l.rendimiento_estandar) / l.rendimiento_estandar * 1000) / 10;
+      const it = { tipo: "rendimiento", labor: l.nombre,
+                   concepto: "Rendimiento " + (l.unidad_rendimiento || "por jornal"),
+                   esperado: l.rendimiento_estandar, real: Math.round(prom * 100) / 100, desviacion_pct: desv };
+      if (Math.abs(desv) > tol) it.alerta = true;
+      rend.push(it);
+    }
+    // 3) precio vs bench (último precio vs promedio de historial)
+    const precios = [];
+    const matsP = await env.DB.prepare(
+      `SELECT m.id, m.codigo, m.nombre, m.unidad,
+              (SELECT precio FROM historial_precios h WHERE h.material_id=m.id ORDER BY h.rowid DESC LIMIT 1) AS ult,
+              (SELECT AVG(precio) FROM (SELECT precio FROM historial_precios h WHERE h.material_id=m.id ORDER BY h.rowid DESC LIMIT 10)) AS prom
+       FROM materiales m WHERE m.activo=1 AND EXISTS (SELECT 1 FROM historial_precios h WHERE h.material_id=m.id)`
+    ).all();
+    for (const m of matsP.results) {
+      if (!m.ult || !m.prom) continue;
+      const desv = Math.round((m.ult - m.prom) / m.prom * 1000) / 10;
+      if (Math.abs(desv) > tol)
+        precios.push({ tipo: "precio", labor: "", concepto: (m.codigo ? m.codigo + " · " : "") + m.nombre,
+                       esperado: Math.round(m.prom), real: Math.round(m.ult), desviacion_pct: desv, alerta: true, unidad: m.unidad });
+    }
+    return json({ semana: { inicio: f1, fin: f2 }, tolerancia: tol,
+                  materiales: mats, rendimiento: rend, precios: precios });
   }
 
   // ==========================================================
